@@ -102,6 +102,23 @@ function main() {
     }
   }
 
+  // Apply migrations (idempotent; ensures fresh builds include post-schema additions)
+  const MIGRATIONS = ["001_songs.sql"]
+  for (const mig of MIGRATIONS) {
+    const migPath = join(DATA_DIR, "migrations", mig)
+    const migSql = readFileSync(migPath, "utf-8")
+    const migStmts = migSql.split(";").map((s) => s.trim()).filter(Boolean)
+    for (const stmt of migStmts) {
+      try {
+        db.exec(stmt + ";")
+      } catch (e) {
+        console.error(`  ❌ Failed on migration ${mig}: ${stmt.substring(0, 60)}...`)
+        throw e
+      }
+    }
+    console.log(`  ✓ Applied migration ${mig}`)
+  }
+
   // Prepare insert statements
   const insertTranslation = db.prepare(
     "INSERT INTO translations (abbreviation, title, language, license) VALUES (?, ?, ?, ?)"
