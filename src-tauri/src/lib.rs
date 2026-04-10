@@ -54,6 +54,11 @@ pub fn run() {
             commands::translate::set_translation_language,
             commands::translate::set_openai_api_key,
             commands::translate::translate_text,
+            commands::songs::list_songs,
+            commands::songs::get_song,
+            commands::songs::create_song,
+            commands::songs::update_song,
+            commands::songs::delete_song,
         ])
         .setup(|app| {
             use tauri::Manager;
@@ -73,6 +78,13 @@ pub fn run() {
             if db_path.exists() {
                 let bible_db = rhema_bible::BibleDb::open(&db_path)
                     .expect("Failed to open Bible database");
+
+                // Apply runtime migrations so existing user DBs pick up new tables.
+                if let Err(e) = bible_db.apply_sql(include_str!(
+                    "../../data/migrations/001_songs.sql"
+                )) {
+                    log::warn!("Failed to apply songs migration: {e}");
+                }
 
                 // Build quotation matching index from all English verses
                 log::info!("Building quotation matching index...");
