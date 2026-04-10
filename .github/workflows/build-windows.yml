@@ -1,6 +1,5 @@
-name: Build Windows Installer                                                                                                                                                                                                              
-                                                                                                                                                                                                                                             
-  on:                                                                                                                                                                                                                                        
+name: Build Windows Installer                                                                                                                                                                                                             
+on:                                                                                                                                                                                                                                        
     push:                                                                                                                                                                                                                                    
       branches:                                             
         - feature/translation-and-songs
