@@ -244,3 +244,14 @@ Create a `.env` file in the project root:
 | Variable | Required | Description |
 |---|---|---|
 | `DEEPGRAM_API_KEY` | Yes | API key for Deepgram speech-to-text |
+| `OPENAI_API_KEY` | Optional | Enables live sermon translation via `gpt-4o-mini`. Leave unset or use `placeholder_replace_me` to disable translation. |
+
+## Service Features (Translation + Song Library)
+
+This fork adds three service-oriented features on top of the base verse-detection pipeline, all toggleable from the in-app Settings dialog (gear icon → Service Features):
+
+- **Live sermon translation.** Finalized transcript sentences are sent to OpenAI `gpt-4o-mini` and rendered in a side-by-side English/target panel. Languages available: French, Spanish, Portuguese, German. Requires `OPENAI_API_KEY`. Toggle + language selector live in Settings → Service Features.
+- **Song library.** A managed catalog of worship songs with sectioned lyrics (`[Verse 1]`, `[Chorus]`, `[Bridge]`, etc. markers parsed automatically). Create/edit/delete via the Songs panel, search via SQLite FTS5, preview sections inline, and push to NDI broadcast via the Song Live panel (Space advances sections, Shift+Space goes back).
+- **Song auto-detection (experimental).** While transcription is active, the app fuzzy-matches the rolling transcript window against indexed song lyrics and automatically advances the Song Live panel when it locks onto a song. Works best with clear vocals; results are inconsistent with full-band worship. Sensitivity slider lives in Settings → Service Features.
+
+The translation/songs features are independent — you can use any subset. Song auto-detect requires the Song library to be populated first.

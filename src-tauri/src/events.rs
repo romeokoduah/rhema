@@ -3,6 +3,7 @@ pub const EVENT_TRANSCRIPT_PARTIAL: &str = "transcript_partial";
 pub const EVENT_TRANSCRIPT_FINAL: &str = "transcript_final";
 pub const EVENT_TRANSLATION_CHUNK: &str = "translation_chunk";
 pub const EVENT_SONG_MATCH: &str = "song_match";
+#[allow(dead_code)]
 pub const EVENT_SONG_MATCH_RELEASED: &str = "song_match_released";
 
 #[derive(Clone, serde::Serialize)]
