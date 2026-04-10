@@ -59,6 +59,7 @@ pub fn run() {
             commands::songs::create_song,
             commands::songs::update_song,
             commands::songs::delete_song,
+            commands::songs::broadcast_song_section,
         ])
         .setup(|app| {
             use tauri::Manager;

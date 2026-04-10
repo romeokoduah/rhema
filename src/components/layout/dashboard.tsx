@@ -6,6 +6,8 @@ import { QueuePanel } from "@/components/panels/queue-panel"
 import { SearchPanel } from "@/components/panels/search-panel"
 import { DetectionsPanel } from "@/components/panels/detections-panel"
 import { TranslationPanel } from "@/components/panels/translation-panel"
+import { SongsPanel } from "@/components/panels/songs-panel"
+import { SongLivePanel } from "@/components/panels/song-live-panel"
 
 export function Dashboard() {
   return (
@@ -14,7 +16,7 @@ export function Dashboard() {
         position: "fixed",
         inset: "0px",
         display: "grid",
-        gridTemplateRows: "56px minmax(0, 2fr) minmax(0, 3fr)",
+        gridTemplateRows: "56px minmax(0, 2fr) minmax(0, 3fr) minmax(0, 2fr)",
         overflow: "hidden",
       }}
       className="bg-background"
@@ -47,6 +49,11 @@ export function Dashboard() {
         <SearchPanel />
         <DetectionsPanel />
         <TranslationPanel />
+      </div>
+      {/* Row 4: Songs library + live lyrics */}
+      <div className="col-span-4 grid min-h-0 grid-cols-[1fr_2fr] gap-3 px-3 pb-3">
+        <SongsPanel />
+        <SongLivePanel />
       </div>
     </div>
     // <div

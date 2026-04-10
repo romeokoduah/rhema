@@ -1,5 +1,5 @@
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 
 use crate::state::AppState;
 use rhema_bible::{NewSong, Song};
@@ -68,4 +68,30 @@ pub fn delete_song(
         .as_ref()
         .ok_or_else(|| "Bible database not loaded".to_string())?;
     db.delete_song(id).map_err(|e| e.to_string())
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum BroadcastContent {
+    SongSection {
+        title: String,
+        label: String,
+        lines: Vec<String>,
+    },
+}
+
+#[tauri::command]
+pub fn broadcast_song_section(
+    app: AppHandle,
+    title: String,
+    label: String,
+    lines: Vec<String>,
+) -> Result<(), String> {
+    let payload = BroadcastContent::SongSection {
+        title,
+        label,
+        lines,
+    };
+    app.emit("broadcast_song_section", payload)
+        .map_err(|e| e.to_string())
 }
