@@ -60,6 +60,8 @@ pub fn run() {
             commands::songs::update_song,
             commands::songs::delete_song,
             commands::songs::broadcast_song_section,
+            commands::songs::set_song_autodetect_enabled,
+            commands::songs::set_song_autodetect_sensitivity,
         ])
         .setup(|app| {
             use tauri::Manager;
@@ -102,10 +104,14 @@ pub fn run() {
 
                 let bible_db = std::sync::Arc::new(bible_db);
 
+                // Construct the song detector now that we have a shared BibleDb.
+                let song_detector = rhema_detection::song_detect::SongDetector::new(bible_db.clone());
+
                 let managed_state = app.state::<Mutex<state::AppState>>();
                 let mut state = managed_state.lock().unwrap();
                 state.bible_db = Some(bible_db);
                 state.quotation_matcher = quotation_matcher;
+                *state.song_detector.lock().unwrap() = Some(song_detector);
                 drop(state);
                 log::info!("Bible database loaded from {:?}", db_path);
             } else {

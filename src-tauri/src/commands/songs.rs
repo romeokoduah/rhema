@@ -81,6 +81,38 @@ pub enum BroadcastContent {
 }
 
 #[tauri::command]
+pub fn set_song_autodetect_enabled(
+    state: State<'_, Mutex<AppState>>,
+    enabled: bool,
+) -> Result<(), String> {
+    let s = state.lock().map_err(|e| e.to_string())?;
+    s.song_detect_enabled
+        .store(enabled, std::sync::atomic::Ordering::SeqCst);
+    if !enabled {
+        if let Ok(mut slot) = s.song_detector.lock() {
+            if let Some(d) = slot.as_mut() {
+                d.release();
+            }
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_song_autodetect_sensitivity(
+    state: State<'_, Mutex<AppState>>,
+    threshold: f32,
+) -> Result<(), String> {
+    let s = state.lock().map_err(|e| e.to_string())?;
+    if let Ok(mut slot) = s.song_detector.lock() {
+        if let Some(d) = slot.as_mut() {
+            d.set_threshold(threshold);
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn broadcast_song_section(
     app: AppHandle,
     title: String,

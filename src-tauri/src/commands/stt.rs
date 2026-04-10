@@ -4,8 +4,8 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::events::{
-    AudioLevelPayload, TranscriptPayload, TranslationPayload, EVENT_AUDIO_LEVEL,
-    EVENT_TRANSCRIPT_FINAL, EVENT_TRANSCRIPT_PARTIAL, EVENT_TRANSLATION_CHUNK,
+    AudioLevelPayload, SongMatchPayload, TranscriptPayload, TranslationPayload, EVENT_AUDIO_LEVEL,
+    EVENT_SONG_MATCH, EVENT_TRANSCRIPT_FINAL, EVENT_TRANSCRIPT_PARTIAL, EVENT_TRANSLATION_CHUNK,
 };
 use crate::state::AppState;
 use rhema_audio::{AudioConfig, AudioFrame};
@@ -320,12 +320,14 @@ pub async fn start_transcription(
                         if !direct_found {
                             if let Some(sentence) = sentence_buf.append(&transcript) {
                                 fan_out_translation(&event_app, &sentence);
+                                fan_out_song_detect(&event_app, &sentence);
                                 let _ = semantic_tx.try_send(sentence);
                             }
                         } else {
                             // Clear the sentence buffer — direct handled it
                             if let Some(sentence) = sentence_buf.force_flush() {
                                 fan_out_translation(&event_app, &sentence);
+                                fan_out_song_detect(&event_app, &sentence);
                             }
                         }
                     }
@@ -334,6 +336,7 @@ pub async fn start_transcription(
                     if speech_final {
                         if let Some(sentence) = sentence_buf.force_flush() {
                             fan_out_translation(&event_app, &sentence);
+                            fan_out_song_detect(&event_app, &sentence);
                             let _ = semantic_tx.try_send(sentence);
                         }
                     }
@@ -342,6 +345,7 @@ pub async fn start_transcription(
                     // Fallback: flush sentence buffer on utterance end
                     if let Some(sentence) = sentence_buf.force_flush() {
                         fan_out_translation(&event_app, &sentence);
+                        fan_out_song_detect(&event_app, &sentence);
                         let _ = semantic_tx.try_send(sentence);
                     }
                 }
@@ -412,6 +416,44 @@ fn fan_out_translation(app: &AppHandle, sentence: &str) {
         let payload: TranslationPayload = chunk.into();
         let _ = app_tr.emit(EVENT_TRANSLATION_CHUNK, payload);
     });
+}
+
+/// Fan-out song detector for a finalized sentence. Synchronous: the FTS
+/// query + fuzzy match are sub-millisecond, so no task spawn. No-op if
+/// autodetect is disabled or the detector slot is empty.
+fn fan_out_song_detect(app: &AppHandle, sentence: &str) {
+    let managed: State<'_, Mutex<AppState>> = app.state();
+    let s = match managed.lock() {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("fan_out_song_detect: AppState lock poisoned: {e}");
+            return;
+        }
+    };
+    if !s.song_detect_enabled.load(Ordering::SeqCst) {
+        return;
+    }
+    let mut slot = match s.song_detector.lock() {
+        Ok(d) => d,
+        Err(e) => {
+            log::error!("fan_out_song_detect: detector mutex poisoned: {e}");
+            return;
+        }
+    };
+    let Some(detector) = slot.as_mut() else {
+        return;
+    };
+    if let Some(m) = detector.ingest(sentence) {
+        let payload = SongMatchPayload {
+            song_id: m.song_id,
+            section_index: m.section_index,
+            line_index: m.line_index,
+            confidence: m.confidence,
+        };
+        if let Err(e) = app.emit(EVENT_SONG_MATCH, payload) {
+            log::error!("fan_out_song_detect: emit failed: {e}");
+        }
+    }
 }
 
 /// Run direct (regex/pattern) detection only. Instant, no ONNX.

@@ -17,6 +17,8 @@ pub struct AppState {
     pub translation_enabled: AtomicBool,
     pub translation_lang: std::sync::Mutex<String>,
     pub translator: std::sync::Mutex<Option<rhema_translate::OpenAiTranslator>>,
+    pub song_detect_enabled: AtomicBool,
+    pub song_detector: std::sync::Mutex<Option<rhema_detection::song_detect::SongDetector>>,
 }
 
 impl AppState {
@@ -38,6 +40,8 @@ impl AppState {
                     .filter(|k| !k.is_empty() && k != "placeholder_replace_me")
                     .map(rhema_translate::OpenAiTranslator::new),
             ),
+            song_detect_enabled: AtomicBool::new(false),
+            song_detector: std::sync::Mutex::new(None),
         }
     }
 }
