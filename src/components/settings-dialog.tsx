@@ -37,15 +37,17 @@ import {
   SettingsIcon,
   CheckIcon,
   BookOpenIcon,
+  SparklesIcon,
 } from "lucide-react"
 import { useSettingsStore } from "@/stores"
 import type { DeviceInfo } from "@/types/audio"
+import { ServiceFeaturesSettings } from "@/components/settings/service-features-settings"
 
 /* -------------------------------------------------------------------------- */
 /*  Nav definition                                                            */
 /* -------------------------------------------------------------------------- */
 
-type NavSection = "audio" | "bible" | "display" | "api-keys"
+type NavSection = "audio" | "bible" | "display" | "api-keys" | "service-features"
 
 const navItems: { name: string; id: NavSection; icon: React.ReactNode }[] = [
   {
@@ -62,6 +64,11 @@ const navItems: { name: string; id: NavSection; icon: React.ReactNode }[] = [
     name: "Display Mode",
     id: "display",
     icon: <TvIcon strokeWidth={2} />,
+  },
+  {
+    name: "Service Features",
+    id: "service-features",
+    icon: <SparklesIcon strokeWidth={2} />,
   },
   {
     name: "API Keys",
@@ -317,7 +324,9 @@ function ApiKeysSection() {
 
 const sectionTitles: Record<NavSection, string> = {
   audio: "Audio",
+  bible: "Bible",
   display: "Display Mode",
+  "service-features": "Service Features",
   "api-keys": "API Keys",
 }
 
@@ -425,6 +434,7 @@ const sectionComponents: Record<NavSection, React.FC> = {
   audio: AudioSection,
   bible: BibleSection,
   display: DisplayModeSection,
+  "service-features": ServiceFeaturesSettings,
   "api-keys": ApiKeysSection,
 }
 
