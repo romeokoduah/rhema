@@ -17,4 +17,10 @@ impl BibleDb {
             conn: Mutex::new(conn),
         })
     }
+
+    /// Execute an arbitrary batch of SQL against the underlying connection.
+    /// Primarily used to apply migration files at startup and in tests.
+    pub fn apply_sql(&self, sql: &str) -> rusqlite::Result<()> {
+        self.conn.lock().unwrap().execute_batch(sql)
+    }
 }

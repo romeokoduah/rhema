@@ -71,6 +71,5 @@ CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
 CREATE VIRTUAL TABLE IF NOT EXISTS songs_fts USING fts5(
   title,
   artist,
-  lyrics_flat,
-  content=''
+  lyrics_flat
 );

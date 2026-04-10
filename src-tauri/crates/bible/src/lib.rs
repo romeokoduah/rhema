@@ -6,7 +6,9 @@ pub mod db;
 pub mod lookup;
 pub mod search;
 pub mod crossref;
+pub mod songs;
 
 pub use models::*;
 pub use error::*;
 pub use db::*;
+pub use songs::{NewSong, Song, SongSection};
