@@ -11,6 +11,8 @@ use crate::state::AppState;
 use rhema_audio::{AudioConfig, AudioFrame};
 use rhema_stt::{DeepgramClient, SttConfig, TranscriptEvent};
 
+static TRANSLATION_SENTENCE_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Start the full audio-capture-to-transcription pipeline.
 ///
 /// 1. Opens the microphone via cpal (on a dedicated thread so the non-Send
@@ -382,24 +384,26 @@ fn fan_out_translation(app: &AppHandle, sentence: &str) {
         }
         let translator = match s.translator.lock() {
             Ok(g) => g.clone(),
-            Err(_) => return,
+            Err(e) => {
+                log::error!("fan_out_translation: translator mutex poisoned: {e}");
+                return;
+            }
         };
-        let lang = s
-            .translation_lang
-            .lock()
-            .map(|l| l.clone())
-            .unwrap_or_else(|_| "French".to_string());
+        let lang = match s.translation_lang.lock() {
+            Ok(l) => l.clone(),
+            Err(e) => {
+                log::error!("fan_out_translation: translation_lang mutex poisoned: {e}");
+                return;
+            }
+        };
         (translator, lang)
     };
     let Some(translator) = translator else {
         return;
     };
     let sentence_id = format!(
-        "{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis())
-            .unwrap_or(0)
+        "t{}",
+        TRANSLATION_SENTENCE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     );
     let sentence_text = sentence.to_string();
     let app_tr = app.clone();

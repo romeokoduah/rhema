@@ -44,3 +44,24 @@ async fn translate_401_marks_failed() {
     assert!(chunk.failed);
     assert_eq!(chunk.target_text, "Hello.");
 }
+
+#[tokio::test]
+async fn translate_empty_content_marks_failed() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/chat/completions"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "choices": [{ "message": { "content": "   " } }]
+        })))
+        .mount(&server)
+        .await;
+
+    let translator = OpenAiTranslator::with_endpoint(
+        "test-key".into(),
+        format!("{}/v1/chat/completions", server.uri()),
+    );
+    let chunk = translator.translate("Hello.", "French", "s3".into()).await;
+
+    assert!(chunk.failed);
+    assert_eq!(chunk.target_text, "Hello.");
+}

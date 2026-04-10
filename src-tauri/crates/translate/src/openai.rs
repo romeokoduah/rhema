@@ -125,6 +125,10 @@ impl OpenAiTranslator {
             .next()
             .map(|c| c.message.content)
             .ok_or_else(|| TranslateError::Parse("no choices".into()))?;
-        Ok(text.trim().to_string())
+        let trimmed = text.trim().to_string();
+        if trimmed.is_empty() {
+            return Err(TranslateError::Parse("empty content".into()));
+        }
+        Ok(trimmed)
     }
 }
