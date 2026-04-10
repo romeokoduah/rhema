@@ -5,7 +5,7 @@ use rhema_bible::BibleDb;
 use rhema_detection::{DetectionPipeline, QuotationMatcher, SermonContext};
 
 pub struct AppState {
-    pub bible_db: Option<BibleDb>,
+    pub bible_db: Option<Arc<BibleDb>>,
     pub detection_pipeline: DetectionPipeline,
     pub sermon_context: SermonContext,
     pub quotation_matcher: QuotationMatcher,

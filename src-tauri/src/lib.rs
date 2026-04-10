@@ -100,6 +100,8 @@ pub fn run() {
                     }
                 };
 
+                let bible_db = std::sync::Arc::new(bible_db);
+
                 let managed_state = app.state::<Mutex<state::AppState>>();
                 let mut state = managed_state.lock().unwrap();
                 state.bible_db = Some(bible_db);
