@@ -8,8 +8,13 @@ import { DetectionsPanel } from "@/components/panels/detections-panel"
 import { TranslationPanel } from "@/components/panels/translation-panel"
 import { SongsPanel } from "@/components/panels/songs-panel"
 import { SongLivePanel } from "@/components/panels/song-live-panel"
+import { useSongDetection } from "@/hooks/use-song-detection"
 
 export function Dashboard() {
+  // Subscribe to song_match events globally so auto-detect works regardless
+  // of which panels are mounted. Translation is mounted inside TranslationPanel.
+  useSongDetection()
+
   return (
     <div
       style={{
