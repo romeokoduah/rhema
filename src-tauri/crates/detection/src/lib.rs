@@ -8,6 +8,7 @@ pub mod sentence_buffer;
 pub mod reading_mode;
 pub mod context;
 pub mod quotation;
+pub mod song_detect;
 
 pub use types::*;
 pub use error::*;
