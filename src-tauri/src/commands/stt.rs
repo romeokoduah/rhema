@@ -4,8 +4,8 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::events::{
-    AudioLevelPayload, TranscriptPayload, EVENT_AUDIO_LEVEL, EVENT_TRANSCRIPT_FINAL,
-    EVENT_TRANSCRIPT_PARTIAL,
+    AudioLevelPayload, TranscriptPayload, TranslationPayload, EVENT_AUDIO_LEVEL,
+    EVENT_TRANSCRIPT_FINAL, EVENT_TRANSCRIPT_PARTIAL, EVENT_TRANSLATION_CHUNK,
 };
 use crate::state::AppState;
 use rhema_audio::{AudioConfig, AudioFrame};
@@ -317,17 +317,21 @@ pub async fn start_transcription(
                         // already detected it at 100%.
                         if !direct_found {
                             if let Some(sentence) = sentence_buf.append(&transcript) {
+                                fan_out_translation(&event_app, &sentence);
                                 let _ = semantic_tx.try_send(sentence);
                             }
                         } else {
                             // Clear the sentence buffer — direct handled it
-                            sentence_buf.force_flush();
+                            if let Some(sentence) = sentence_buf.force_flush() {
+                                fan_out_translation(&event_app, &sentence);
+                            }
                         }
                     }
 
                     // On speech_final: force-flush any remaining buffered text
                     if speech_final {
                         if let Some(sentence) = sentence_buf.force_flush() {
+                            fan_out_translation(&event_app, &sentence);
                             let _ = semantic_tx.try_send(sentence);
                         }
                     }
@@ -335,6 +339,7 @@ pub async fn start_transcription(
                 TranscriptEvent::UtteranceEnd => {
                     // Fallback: flush sentence buffer on utterance end
                     if let Some(sentence) = sentence_buf.force_flush() {
+                        fan_out_translation(&event_app, &sentence);
                         let _ = semantic_tx.try_send(sentence);
                     }
                 }
@@ -360,6 +365,49 @@ pub async fn start_transcription(
     });
 
     Ok(())
+}
+
+/// Fan-out translation for a finalized sentence. Non-blocking: reads translator
+/// + language from AppState, spawns a tokio task to call OpenAI, then emits
+/// `translation_chunk`. No-op if translation is disabled or no translator is set.
+fn fan_out_translation(app: &AppHandle, sentence: &str) {
+    let managed: State<'_, Mutex<AppState>> = app.state();
+    let (translator, lang) = {
+        let s = match managed.lock() {
+            Ok(s) => s,
+            Err(_) => return,
+        };
+        if !s.translation_enabled.load(Ordering::SeqCst) {
+            return;
+        }
+        let translator = match s.translator.lock() {
+            Ok(g) => g.clone(),
+            Err(_) => return,
+        };
+        let lang = s
+            .translation_lang
+            .lock()
+            .map(|l| l.clone())
+            .unwrap_or_else(|_| "French".to_string());
+        (translator, lang)
+    };
+    let Some(translator) = translator else {
+        return;
+    };
+    let sentence_id = format!(
+        "{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0)
+    );
+    let sentence_text = sentence.to_string();
+    let app_tr = app.clone();
+    tokio::spawn(async move {
+        let chunk = translator.translate(&sentence_text, &lang, sentence_id).await;
+        let payload: TranslationPayload = chunk.into();
+        let _ = app_tr.emit(EVENT_TRANSLATION_CHUNK, payload);
+    });
 }
 
 /// Run direct (regex/pattern) detection only. Instant, no ONNX.

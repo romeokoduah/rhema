@@ -14,6 +14,9 @@ pub struct AppState {
     pub stt_active: Arc<AtomicBool>,
     #[allow(dead_code)]
     pub deepgram_api_key: Option<String>,
+    pub translation_enabled: AtomicBool,
+    pub translation_lang: std::sync::Mutex<String>,
+    pub translator: std::sync::Mutex<Option<rhema_translate::OpenAiTranslator>>,
 }
 
 impl AppState {
@@ -27,6 +30,14 @@ impl AppState {
             audio_active: Arc::new(AtomicBool::new(false)),
             stt_active: Arc::new(AtomicBool::new(false)),
             deepgram_api_key: None,
+            translation_enabled: AtomicBool::new(false),
+            translation_lang: std::sync::Mutex::new("French".to_string()),
+            translator: std::sync::Mutex::new(
+                std::env::var("OPENAI_API_KEY")
+                    .ok()
+                    .filter(|k| !k.is_empty() && k != "placeholder_replace_me")
+                    .map(rhema_translate::OpenAiTranslator::new),
+            ),
         }
     }
 }

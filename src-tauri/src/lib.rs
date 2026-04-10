@@ -50,6 +50,10 @@ pub fn run() {
             commands::broadcast::stop_ndi,
             commands::broadcast::get_ndi_status,
             commands::broadcast::push_ndi_frame,
+            commands::translate::set_translation_enabled,
+            commands::translate::set_translation_language,
+            commands::translate::set_openai_api_key,
+            commands::translate::translate_text,
         ])
         .setup(|app| {
             use tauri::Manager;
