@@ -1,60 +1,65 @@
-name: Build Windows Installer                                                                                                                                                                                                             
-on:                                                                                                                                                                                                                                        
-    push:                                                                                                                                                                                                                                    
-      branches:                                             
-        - feature/translation-and-songs
-        - main
-    workflow_dispatch:
+name: Build Windows Installer
 
-  jobs:
-    build:
-      runs-on: windows-latest
-                                                                                                                                                                                                                                             
-      steps:
-        - name: Checkout                                                                                                                                                                                                                     
-          uses: actions/checkout@v4                         
+on:
+  push:
+    branches:
+      - feature/translation-and-songs
+      - main
+  workflow_dispatch:
 
-        - name: Install Rust
-          uses: dtolnay/rust-toolchain@stable
-                                                                                                                                                                                                                                             
-        - name: Cache cargo registry and target                                                                                                                                                                                              
-          uses: actions/cache@v4                                                                                                                                                                                                             
-          with:                                                                                                                                                                                                                              
-            path: |                                         
-              ~/.cargo/registry
-              ~/.cargo/git
-              src-tauri/target
-            key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}                                                                                                                                                             
-            restore-keys: |
-              ${{ runner.os }}-cargo-                                                                                                                                                                                                        
-                                                            
-        - name: Setup Bun                                                                                                                                                                                                                    
-          uses: oven-sh/setup-bun@v2                        
-          with:                                                                                                                                                                                                                              
-            bun-version: latest
-                                                                                                                                                                                                                                             
-        - name: Install JS dependencies                     
-          run: bun install
+jobs:
+  build:
+    runs-on: windows-latest
 
-        - name: Download public-domain Bible data                                                                                                                                                                                            
-          run: bun run download:bible-data
-                                                                                                                                                                                                                                             
-        - name: Build Bible SQLite database                                                                                                                                                                                                  
-          run: bun run build:bible
-                                                                                                                                                                                                                                             
-        - name: Build Tauri Windows installer               
-          run: bun run tauri build
-                                                                                                                                                                                                                                             
-        - name: Upload MSI artifact
-          uses: actions/upload-artifact@v4                                                                                                                                                                                                   
-          with:                                             
-            name: rhema-windows-msi
-            path: src-tauri/target/release/bundle/msi/*.msi                                                                                                                                                                                  
-            if-no-files-found: warn
-                                                                                                                                                                                                                                             
-        - name: Upload NSIS artifact                        
-          uses: actions/upload-artifact@v4                                                                                                                                                                                                   
-          with:                                             
-            name: rhema-windows-nsis
-            path: src-tauri/target/release/bundle/nsis/*.exe
-            if-no-files-found: warn 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install JS dependencies
+        run: bun install
+
+      - name: Download public-domain Bible data
+        run: bun run download:bible-data
+
+      - name: Build Bible SQLite database
+        run: bun run build:bible
+
+      - name: Build Tauri Windows installer
+        run: bun run tauri build
+        env:
+          # Runtime keys are filled in by the user via Settings → Service Features,
+          # so no secrets are needed at build time.
+          TAURI_SIGNING_PRIVATE_KEY: ""
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhema-windows-msi
+          path: src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: warn
+
+      - name: Upload NSIS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhema-windows-nsis
+          path: src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: warn
