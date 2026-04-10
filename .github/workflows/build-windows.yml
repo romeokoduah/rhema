@@ -48,9 +48,6 @@ jobs:
         env:
           CFLAGS: /MD
           CXXFLAGS: /MD
-        env:
-          # Runtime keys are filled in by the user via Settings → Service Features,
-          # so no secrets are needed at build time.
           TAURI_SIGNING_PRIVATE_KEY: ""
 
       - name: Upload MSI artifact
