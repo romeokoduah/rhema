@@ -8,6 +8,7 @@ members = [
     "crates/broadcast",
     "crates/api",
     "crates/notes",
+    "crates/translate",
 ]
 resolver = "2"
 
@@ -49,6 +50,7 @@ rhema-bible = { path = "crates/bible" }
 rhema-stt = { path = "crates/stt" }
 rhema-broadcast = { path = "crates/broadcast" }
 rhema-detection = { path = "crates/detection", features = ["onnx", "vector-search"] }
+rhema-translate = { path = "crates/translate" }
 crossbeam-channel = "0.5"
 dotenvy = "0.15"
 base64 = "0.22"
