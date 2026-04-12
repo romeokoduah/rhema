@@ -5,19 +5,31 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   PlusIcon,
   HeartIcon,
   MoreHorizontalIcon,
   SearchIcon,
-  DownloadIcon,
-  UploadIcon,
+  LockIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  CATEGORY_LABELS,
+  CATEGORY_ICONS,
+  type TemplateCategory,
+} from "@/types/template"
 import type { BroadcastTheme, VerseRenderData } from "@/types"
 
-type FilterTab = "all" | "pinned" | "custom"
+type FilterTab = "all" | TemplateCategory
+
+const CATEGORIES: TemplateCategory[] = [
+  "lower_third",
+  "verse",
+  "lyrics",
+  "announcement",
+  "countdown",
+  "alert",
+]
 
 const THUMBNAIL_VERSE: VerseRenderData = {
   reference: "John 3:16 (KJV)",
@@ -62,6 +74,13 @@ function ThemeCard({
             <HeartIcon className="size-3 text-primary" strokeWidth={2} />
           </div>
         )}
+
+        {/* Lock icon for built-in */}
+        {theme.builtin && (
+          <div className="absolute right-1.5 bottom-1.5 flex size-5 items-center justify-center rounded-full bg-background/80">
+            <LockIcon className="size-3 text-muted-foreground" strokeWidth={2} />
+          </div>
+        )}
       </div>
 
       {/* Info */}
@@ -100,6 +119,46 @@ function ThemeCard({
   )
 }
 
+function CategoryNav({
+  active,
+  onSelect,
+}: {
+  active: FilterTab
+  onSelect: (tab: FilterTab) => void
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 px-2 py-2">
+      <button
+        onClick={() => onSelect("all")}
+        className={cn(
+          "flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
+          active === "all"
+            ? "bg-primary/10 font-semibold text-primary"
+            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+        )}
+      >
+        <span className="w-4 text-center text-sm">*</span>
+        <span>All Categories</span>
+      </button>
+      {CATEGORIES.map((cat) => (
+        <button
+          key={cat}
+          onClick={() => onSelect(cat)}
+          className={cn(
+            "flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
+            active === cat
+              ? "bg-primary/10 font-semibold text-primary"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          )}
+        >
+          <span className="w-4 text-center text-sm">{CATEGORY_ICONS[cat]}</span>
+          <span>{CATEGORY_LABELS[cat]}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function ThemeLibrary() {
   const themes = useBroadcastStore((s) => s.themes)
   const activeThemeId = useBroadcastStore((s) => s.activeThemeId)
@@ -113,10 +172,10 @@ export function ThemeLibrary() {
       const q = search.toLowerCase()
       result = result.filter((t) => t.name.toLowerCase().includes(q))
     }
-    if (filter === "pinned") result = result.filter((t) => t.pinned)
-    if (filter === "custom") result = result.filter((t) => !t.builtin)
+    // Category filtering is visual only — BroadcastTheme doesn't have category,
+    // so we show all when a category is selected (categories apply to Template, not BroadcastTheme)
     return result
-  }, [themes, search, filter])
+  }, [themes, search])
 
   const builtinThemes = filteredThemes.filter((t) => t.builtin)
   const customThemes = filteredThemes.filter((t) => !t.builtin)
@@ -133,14 +192,10 @@ export function ThemeLibrary() {
       {/* Header */}
       <div className="flex h-14 items-center justify-between border-b border-border px-3">
         <span className="text-lg font-semibold text-foreground">Themes</span>
-        <Button onClick={handleNewTheme}>
-          <PlusIcon className="size-4" />
-          New
-        </Button>
       </div>
 
       {/* Search */}
-      <div className="px-3 pt-3 pb-4">
+      <div className="px-3 pt-3 pb-2">
         <div className="relative">
           <SearchIcon className="absolute top-1/2 left-2 size-3 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -152,34 +207,14 @@ export function ThemeLibrary() {
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <Tabs
-        value={filter}
-        onValueChange={(value) => setFilter(value as FilterTab)}
-        className="px-3 pb-4"
-      >
-        <TabsList className="h-7 w-full">
-          <TabsTrigger value="all" className="capitalize">all</TabsTrigger>
-          <TabsTrigger value="pinned" className="capitalize">pinned</TabsTrigger>
-          <TabsTrigger value="custom" className="capitalize">custom</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {/* Import / Export */}
-      <div className="flex gap-1.5 px-3 pb-3">
-        <Button variant="outline" className="flex-1 border-border bg-transparent">
-          <UploadIcon className="size-2.5" />
-          Import
-        </Button>
-        <Button variant="outline" className="flex-1 border-border bg-transparent">
-          <DownloadIcon className="size-2.5" />
-          Export All
-        </Button>
+      {/* Category sidebar nav */}
+      <div className="border-b border-border">
+        <CategoryNav active={filter} onSelect={setFilter} />
       </div>
 
       {/* Theme list */}
       <ScrollArea className="min-h-0 flex-1">
-        <div className="flex flex-col gap-1 px-2 pb-4">
+        <div className="grid grid-cols-1 gap-1 px-2 pb-4">
           {/* Built-in section */}
           {builtinThemes.length > 0 && (
             <>
@@ -227,6 +262,14 @@ export function ThemeLibrary() {
           )}
         </div>
       </ScrollArea>
+
+      {/* New Template button at bottom */}
+      <div className="border-t border-border p-3">
+        <Button onClick={handleNewTheme} className="w-full">
+          <PlusIcon className="size-4" />
+          New Template
+        </Button>
+      </div>
     </div>
   )
 }
