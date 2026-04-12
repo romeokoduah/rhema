@@ -55,11 +55,15 @@ jobs:
       - name: Build Bible SQLite database
         run: bun run build:bible
 
+      - name: Install CMake
+        uses: lukka/get-cmake@latest
+
       - name: Build Tauri Windows installer
         run: bun run tauri build
         env:
           CFLAGS: /MD
           CXXFLAGS: /MD
+          CMAKE_MSVC_RUNTIME_LIBRARY: MultiThreadedDLL
           TAURI_SIGNING_PRIVATE_KEY: ""
 
       - name: Upload MSI artifact
