@@ -129,7 +129,7 @@ function AudioSection() {
               placeholder={loading ? "Loading devices..." : "System default"}
             />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent portal={false}>
             <SelectItem value="__default__">System default</SelectItem>
             {devices.map((device) => (
               <SelectItem key={device.id} value={device.id}>
@@ -394,7 +394,7 @@ function BibleSection() {
           <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder={loading ? "Loading..." : "Select translation"} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent portal={false}>
             {englishTranslations.length > 0 && (
               <>
                 <div className="px-2 py-1 text-[0.5625rem] font-medium uppercase tracking-wider text-muted-foreground">

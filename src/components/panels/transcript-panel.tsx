@@ -42,6 +42,14 @@ export function TranscriptPanel() {
     useTranscriptStore.getState().setConnectionStatus("error")
   })
 
+  // Whisper model auto-download events
+  useTauriEvent("whisper_model_downloading", () => {
+    useTranscriptStore.getState().setConnectionStatus("downloading")
+  })
+  useTauriEvent("whisper_model_ready", () => {
+    useTranscriptStore.getState().setConnectionStatus("connecting")
+  })
+
   useTauriEvent<{ text: string; is_final: boolean; confidence: number }>(
     "transcript_partial",
     (payload) => {
@@ -145,7 +153,7 @@ export function TranscriptPanel() {
         apiKey: deepgramApiKey ?? "",
         deviceId: settings.audioDeviceId,
         gain: settings.gain,
-        backend: settings.sttBackend ?? "cloud",
+        backend: settings.sttBackend ?? "local",
       })
       useTranscriptStore.getState().setTranscribing(true)
     } catch (e) {
@@ -176,18 +184,20 @@ export function TranscriptPanel() {
         icon={<MicIcon className="size-3" />}
       >
         <div className="flex items-center gap-2">
-          {isTranscribing && (
+          {(isTranscribing || connectionStatus === "downloading") && (
             <span
               className={`size-2 rounded-full ${
                 connectionStatus === "connected"
                   ? "bg-emerald-500"
-                  : connectionStatus === "connecting"
-                    ? "animate-pulse bg-amber-500"
-                    : connectionStatus === "error"
-                      ? "bg-red-500"
-                      : "bg-muted-foreground/40"
+                  : connectionStatus === "downloading"
+                    ? "animate-pulse bg-blue-500"
+                    : connectionStatus === "connecting"
+                      ? "animate-pulse bg-amber-500"
+                      : connectionStatus === "error"
+                        ? "bg-red-500"
+                        : "bg-muted-foreground/40"
               }`}
-              title={connectionStatus}
+              title={connectionStatus === "downloading" ? "Downloading Whisper model..." : connectionStatus}
             />
           )}
           <LevelMeter level={audioLevel.rms} bars={5} />
@@ -199,9 +209,15 @@ export function TranscriptPanel() {
           {/* Faded top gradient */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-linear-to-b from-card to-transparent" />
 
-          {segments.length === 0 && !currentPartial && !isTranscribing && (
+          {segments.length === 0 && !currentPartial && !isTranscribing && connectionStatus !== "downloading" && (
             <p className="text-sm text-muted-foreground">
               Click "Start transcribing" to begin
+            </p>
+          )}
+
+          {connectionStatus === "downloading" && (
+            <p className="text-sm text-muted-foreground animate-pulse">
+              Downloading Whisper model (~1.6 GB)...
             </p>
           )}
 
@@ -249,9 +265,9 @@ export function TranscriptPanel() {
             Stop transcribing
           </Button>
         ) : (
-          <Button variant="ghost" size="sm" onClick={handleStart}>
+          <Button variant="ghost" size="sm" onClick={handleStart} disabled={connectionStatus === "downloading"}>
               <MicIcon className="size-3" />
-            Start transcribing
+            {connectionStatus === "downloading" ? "Downloading model..." : "Start transcribing"}
           </Button>
         )}
       </div>

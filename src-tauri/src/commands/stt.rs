@@ -42,13 +42,47 @@ pub async fn start_transcription(
         (app_state.stt_active.clone(), app_state.audio_active.clone())
     };
 
-    // For local Whisper backend, validate the model exists (bundled or downloaded)
+    // For local Whisper backend, resolve the model path.
+    // In dev mode the Tauri resource dir points at target/debug/ where the
+    // model is copied; also check the CWD (the binary's working directory)
+    // and a sibling "models/" dir relative to the manifest for convenience.
     let whisper_model_path = if use_local {
         let resource_dir = app.path().resource_dir().ok();
         let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-        match rhema_stt::whisper_model::resolve_model_path(resource_dir.as_deref(), &data_dir) {
+
+        log::info!("[Whisper] resource_dir={:?}, data_dir={:?}", resource_dir, data_dir);
+
+        let resolved = rhema_stt::whisper_model::resolve_model_path(resource_dir.as_deref(), &data_dir);
+        log::info!("[Whisper] resolve_model_path => {:?}", resolved);
+
+        match resolved {
             Some(path) => Some(path),
-            None => return Err("Whisper model not found. Please download it in Settings first.".into()),
+            None => {
+                // Dev-mode fallback: check CWD and project-level models/ dir
+                let cwd_model = std::env::current_dir()
+                    .ok()
+                    .map(|d| d.join("ggml-tiny.en.bin"));
+                let project_model = std::env::current_dir()
+                    .ok()
+                    .map(|d| d.join("../models/ggml-tiny.en.bin"));
+
+                if let Some(p) = cwd_model.filter(|p| p.exists()) {
+                    log::info!("[Whisper] Found model in CWD: {:?}", p);
+                    Some(p)
+                } else if let Some(p) = project_model.filter(|p| p.exists()) {
+                    log::info!("[Whisper] Found model in project models/: {:?}", p);
+                    Some(p)
+                } else {
+                    // Last resort: auto-download
+                    log::info!("[Whisper] Model not found anywhere, downloading...");
+                    let _ = app.emit("whisper_model_downloading", ());
+                    let path = rhema_stt::whisper_model::download_model(&data_dir)
+                        .await
+                        .map_err(|e| format!("Failed to auto-download Whisper model: {e}"))?;
+                    let _ = app.emit("whisper_model_ready", ());
+                    Some(path)
+                }
+            }
         }
     } else {
         None
@@ -895,12 +929,21 @@ fn run_quotation_matching(app: &AppHandle, transcript: &str) {
     let _ = app.emit("verse_detections", &results);
 }
 
-/// Check if the local Whisper model exists (bundled resource or downloaded).
+/// Check if the local Whisper model exists (bundled resource, downloaded, or dev CWD).
 #[tauri::command]
 pub async fn whisper_model_exists(app: AppHandle) -> Result<bool, String> {
     let resource_dir = app.path().resource_dir().ok();
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    Ok(rhema_stt::whisper_model::model_exists_any(resource_dir.as_deref(), &data_dir))
+    if rhema_stt::whisper_model::model_exists_any(resource_dir.as_deref(), &data_dir) {
+        return Ok(true);
+    }
+    // Dev-mode fallback: CWD or project models/
+    if let Ok(cwd) = std::env::current_dir() {
+        if cwd.join("ggml-tiny.en.bin").exists() || cwd.join("../models/ggml-tiny.en.bin").exists() {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Check if the Whisper model is bundled with the app (in the resource dir).

@@ -83,7 +83,7 @@ export function ServiceFeaturesSettings() {
             <SelectTrigger className="h-8 w-48">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent portal={false}>
               <SelectItem value="cloud">Cloud (Deepgram)</SelectItem>
               <SelectItem value="local">Local (Whisper)</SelectItem>
             </SelectContent>
@@ -119,7 +119,7 @@ export function ServiceFeaturesSettings() {
                   ) : (
                     <>
                       <DownloadIcon className="size-3.5 mr-1" />
-                      Download Model (~75MB)
+                      Download Model (~1.6GB)
                     </>
                   )}
                 </Button>
@@ -161,7 +161,7 @@ export function ServiceFeaturesSettings() {
             <SelectTrigger className="h-8 w-36">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent portal={false}>
               <SelectItem value="French">French</SelectItem>
               <SelectItem value="Spanish">Spanish</SelectItem>
               <SelectItem value="Portuguese">Portuguese</SelectItem>

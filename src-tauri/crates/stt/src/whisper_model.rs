@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
 const MODEL_URL: &str =
-    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin";
-const MODEL_FILENAME: &str = "ggml-tiny.en.bin";
+    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin";
+const MODEL_FILENAME: &str = "ggml-large-v3-turbo.bin";
 
 pub fn model_dir(app_data_dir: &Path) -> PathBuf {
     app_data_dir.join("models")

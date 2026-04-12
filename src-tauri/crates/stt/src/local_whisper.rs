@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
-const CHUNK_DURATION_SECS: usize = 3;
+const CHUNK_DURATION_SECS: usize = 10;
 const SAMPLE_RATE: usize = 16000;
 const CHUNK_SAMPLES: usize = CHUNK_DURATION_SECS * SAMPLE_RATE;
 
@@ -18,18 +18,27 @@ impl WhisperClient {
         event_tx: tokio::sync::mpsc::Sender<TranscriptEvent>,
         active: Arc<AtomicBool>,
     ) -> Result<(), String> {
-        let ctx = WhisperContext::new_with_params(
-            model_path.to_str().ok_or("Invalid model path")?,
-            WhisperContextParameters::default(),
-        )
-        .map_err(|e| format!("Failed to load Whisper model: {e}"))?;
-
-        // Signal that we're connected
-        let _ = event_tx.blocking_send(TranscriptEvent::Connected);
+        let model_str = model_path.to_str().ok_or("Invalid model path")?.to_string();
 
         std::thread::Builder::new()
             .name("whisper-inference".into())
             .spawn(move || {
+                let ctx = match WhisperContext::new_with_params(
+                    &model_str,
+                    WhisperContextParameters::default(),
+                ) {
+                    Ok(ctx) => ctx,
+                    Err(e) => {
+                        log::error!("Failed to load Whisper model: {e}");
+                        let _ = event_tx.blocking_send(TranscriptEvent::Error(
+                            format!("Failed to load Whisper model: {e}"),
+                        ));
+                        return;
+                    }
+                };
+
+                // Signal connected (safe: we're on a std thread, not tokio)
+                let _ = event_tx.blocking_send(TranscriptEvent::Connected);
                 let mut buffer: Vec<f32> = Vec::with_capacity(CHUNK_SAMPLES * 2);
 
                 while active.load(Ordering::SeqCst) {
@@ -45,7 +54,10 @@ impl WhisperClient {
                                 match transcribe(&ctx, &chunk) {
                                     Ok(text) => {
                                         let text = text.trim().to_string();
-                                        if !text.is_empty() {
+                                        if !text.is_empty()
+                                            && !text.contains("[BLANK_AUDIO]")
+                                            && !text.starts_with('[')
+                                        {
                                             let _ = event_tx.blocking_send(
                                                 TranscriptEvent::Final {
                                                     transcript: text,
@@ -85,10 +97,14 @@ fn transcribe(ctx: &WhisperContext, audio: &[f32]) -> Result<String, String> {
     params.set_print_realtime(false);
     params.set_print_timestamps(false);
     params.set_suppress_blank(true);
-    params.set_single_segment(true);
     params.set_no_context(true);
-    // Speed optimization for real-time
-    params.set_n_threads(4);
+    // Allow temperature fallback so the large model doesn't reject low-confidence chunks
+    params.set_temperature_inc(0.2);
+    // Use available cores for the larger model
+    let n_threads = std::thread::available_parallelism()
+        .map(|n| n.get().min(8))
+        .unwrap_or(4) as i32;
+    params.set_n_threads(n_threads);
 
     state.full(params, audio).map_err(|e| format!("{e}"))?;
 
