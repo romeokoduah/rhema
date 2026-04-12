@@ -43,6 +43,7 @@ pub fn run() {
             commands::stt::start_transcription,
             commands::stt::stop_transcription,
             commands::stt::whisper_model_exists,
+            commands::stt::whisper_model_is_bundled,
             commands::stt::download_whisper_model,
             commands::broadcast::list_monitors,
             commands::broadcast::ensure_broadcast_window,

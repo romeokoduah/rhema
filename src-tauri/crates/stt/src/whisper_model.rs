@@ -16,6 +16,38 @@ pub fn model_exists(app_data_dir: &Path) -> bool {
     model_path(app_data_dir).exists()
 }
 
+/// Resolve the model path, checking the bundled resource dir first,
+/// then falling back to the app data dir (user-downloaded).
+pub fn resolve_model_path(resource_dir: Option<&Path>, app_data_dir: &Path) -> Option<PathBuf> {
+    // Check bundled resource dir first
+    if let Some(res_dir) = resource_dir {
+        let bundled = res_dir.join(MODEL_FILENAME);
+        if bundled.exists() {
+            return Some(bundled);
+        }
+    }
+    // Fall back to app data dir
+    let downloaded = model_path(app_data_dir);
+    if downloaded.exists() {
+        return Some(downloaded);
+    }
+    None
+}
+
+/// Check if the model exists in either the resource dir or the app data dir.
+pub fn model_exists_any(resource_dir: Option<&Path>, app_data_dir: &Path) -> bool {
+    resolve_model_path(resource_dir, app_data_dir).is_some()
+}
+
+/// Returns true if the model is found in the bundled resource dir.
+pub fn model_is_bundled(resource_dir: Option<&Path>) -> bool {
+    if let Some(res_dir) = resource_dir {
+        res_dir.join(MODEL_FILENAME).exists()
+    } else {
+        false
+    }
+}
+
 pub async fn download_model(app_data_dir: &Path) -> Result<PathBuf, String> {
     let dir = model_dir(app_data_dir);
     std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create model dir: {e}"))?;

@@ -24,14 +24,20 @@ export function ServiceFeaturesSettings() {
   const [saved, setSaved] = useState(false)
   const { sttBackend, setSttBackend } = useSettingsStore()
   const [modelDownloaded, setModelDownloaded] = useState<boolean | null>(null)
+  const [modelBundled, setModelBundled] = useState(false)
   const [downloading, setDownloading] = useState(false)
 
   const checkModel = useCallback(async () => {
     try {
-      const exists = await invoke<boolean>("whisper_model_exists")
+      const [exists, bundled] = await Promise.all([
+        invoke<boolean>("whisper_model_exists"),
+        invoke<boolean>("whisper_model_is_bundled"),
+      ])
       setModelDownloaded(exists)
+      setModelBundled(bundled)
     } catch {
       setModelDownloaded(false)
+      setModelBundled(false)
     }
   }, [])
 
@@ -86,7 +92,13 @@ export function ServiceFeaturesSettings() {
         {sttBackend === "local" && (
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              {modelDownloaded === true && (
+              {modelDownloaded === true && modelBundled && (
+                <span className="flex items-center gap-1 text-xs text-green-600">
+                  <CheckCircleIcon className="size-3.5" />
+                  Model: Bundled (no download needed)
+                </span>
+              )}
+              {modelDownloaded === true && !modelBundled && (
                 <span className="flex items-center gap-1 text-xs text-green-600">
                   <CheckCircleIcon className="size-3.5" />
                   Model downloaded
@@ -117,8 +129,10 @@ export function ServiceFeaturesSettings() {
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              No internet or API key required after model download. Uses whisper.cpp
-              for on-device transcription.
+              {modelBundled
+                ? "Model is bundled with the app. No internet or API key required."
+                : "No internet or API key required after model download."}{" "}
+              Uses whisper.cpp for on-device transcription.
             </p>
           </div>
         )}

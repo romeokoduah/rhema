@@ -30,7 +30,8 @@
     "active": true,
     "targets": "all",
     "resources": {
-      "../data/rhema.db": "rhema.db"
+      "../data/rhema.db": "rhema.db",
+      "../models/ggml-tiny.en.bin": "ggml-tiny.en.bin"
     },
     "icon": [
       "icons/32x32.png",

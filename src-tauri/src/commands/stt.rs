@@ -42,14 +42,14 @@ pub async fn start_transcription(
         (app_state.stt_active.clone(), app_state.audio_active.clone())
     };
 
-    // For local Whisper backend, validate the model exists
+    // For local Whisper backend, validate the model exists (bundled or downloaded)
     let whisper_model_path = if use_local {
+        let resource_dir = app.path().resource_dir().ok();
         let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-        let path = rhema_stt::whisper_model::model_path(&data_dir);
-        if !path.exists() {
-            return Err("Whisper model not downloaded. Please download it in Settings first.".into());
+        match rhema_stt::whisper_model::resolve_model_path(resource_dir.as_deref(), &data_dir) {
+            Some(path) => Some(path),
+            None => return Err("Whisper model not found. Please download it in Settings first.".into()),
         }
-        Some(path)
     } else {
         None
     };
@@ -895,11 +895,19 @@ fn run_quotation_matching(app: &AppHandle, transcript: &str) {
     let _ = app.emit("verse_detections", &results);
 }
 
-/// Check if the local Whisper model has been downloaded.
+/// Check if the local Whisper model exists (bundled resource or downloaded).
 #[tauri::command]
 pub async fn whisper_model_exists(app: AppHandle) -> Result<bool, String> {
+    let resource_dir = app.path().resource_dir().ok();
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    Ok(rhema_stt::whisper_model::model_exists(&data_dir))
+    Ok(rhema_stt::whisper_model::model_exists_any(resource_dir.as_deref(), &data_dir))
+}
+
+/// Check if the Whisper model is bundled with the app (in the resource dir).
+#[tauri::command]
+pub async fn whisper_model_is_bundled(app: AppHandle) -> Result<bool, String> {
+    let resource_dir = app.path().resource_dir().ok();
+    Ok(rhema_stt::whisper_model::model_is_bundled(resource_dir.as_deref()))
 }
 
 /// Download the local Whisper model (~75MB) to the app data directory.
