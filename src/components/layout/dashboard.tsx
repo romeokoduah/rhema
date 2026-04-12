@@ -8,6 +8,7 @@ import { DetectionsPanel } from "@/components/panels/detections-panel"
 import { TranslationPanel } from "@/components/panels/translation-panel"
 import { SongsPanel } from "@/components/panels/songs-panel"
 import { SongLivePanel } from "@/components/panels/song-live-panel"
+import { CountdownPanel } from "@/components/panels/countdown-panel"
 import { AlertOverlay } from "@/components/broadcast/alert-overlay"
 import { useSongDetection } from "@/hooks/use-song-detection"
 
@@ -59,10 +60,11 @@ export function Dashboard() {
         <DetectionsPanel />
         <TranslationPanel />
       </div>
-      {/* Row 4: Songs library + live lyrics */}
-      <div className="col-span-4 grid min-h-0 grid-cols-[1fr_2fr] gap-3 px-3 pb-3">
+      {/* Row 4: Songs library + live lyrics + countdown */}
+      <div className="col-span-4 grid min-h-0 grid-cols-[1fr_2fr_220px] gap-3 px-3 pb-3">
         <SongsPanel />
         <SongLivePanel />
+        <CountdownPanel />
       </div>
     </div>
     // <div
