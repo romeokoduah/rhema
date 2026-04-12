@@ -1,4 +1,4 @@
-name: Build Windows Installer
+name: Build Installers
 
 on:
   push:
@@ -9,7 +9,16 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: windows
+          - os: macos-latest
+            label: macos
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -18,7 +27,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo registry and target
+      - name: Cache cargo
         uses: actions/cache@v4
         with:
           path: |
@@ -55,27 +64,53 @@ jobs:
       - name: Build Bible SQLite database
         run: bun run build:bible
 
+      - name: Download Whisper model
+        run: |
+          mkdir -p models
+          curl -L -o models/ggml-tiny.en.bin "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin"
+        shell: bash
+
       - name: Install CMake
         uses: lukka/get-cmake@latest
 
-      - name: Build Tauri Windows installer
+      - name: Build Tauri installer
         run: bun run tauri build
         env:
-          CFLAGS: /MD
-          CXXFLAGS: /MD
-          CMAKE_MSVC_RUNTIME_LIBRARY: MultiThreadedDLL
+          CFLAGS: ${{ matrix.label == 'windows' && '/MD' || '' }}
+          CXXFLAGS: ${{ matrix.label == 'windows' && '/MD' || '' }}
+          CMAKE_MSVC_RUNTIME_LIBRARY: ${{ matrix.label == 'windows' && 'MultiThreadedDLL' || '' }}
           TAURI_SIGNING_PRIVATE_KEY: ""
 
-      - name: Upload MSI artifact
+      # Windows artifacts
+      - name: Upload Windows MSI
+        if: matrix.label == 'windows'
         uses: actions/upload-artifact@v4
         with:
           name: rhema-windows-msi
           path: src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: warn
 
-      - name: Upload NSIS artifact
+      - name: Upload Windows NSIS
+        if: matrix.label == 'windows'
         uses: actions/upload-artifact@v4
         with:
-          name: rhema-windows-nsis
+          name: rhema-windows-exe
           path: src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: warn
+
+      # macOS artifacts
+      - name: Upload macOS DMG
+        if: matrix.label == 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhema-macos-dmg
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: warn
+
+      - name: Upload macOS App
+        if: matrix.label == 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhema-macos-app
+          path: src-tauri/target/release/bundle/macos/*.app
           if-no-files-found: warn
