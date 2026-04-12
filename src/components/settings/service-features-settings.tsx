@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { invoke } from "@tauri-apps/api/core"
 import { Switch } from "@/components/ui/switch"
 import {
   Select,
@@ -12,13 +13,46 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useTranslation } from "@/hooks/use-translation"
 import { useSongDetection } from "@/hooks/use-song-detection"
+import { useSettingsStore } from "@/stores"
 import type { TranslationLanguage } from "@/types/translation"
+import { DownloadIcon, CheckCircleIcon, LoaderIcon } from "lucide-react"
 
 export function ServiceFeaturesSettings() {
   const translation = useTranslation()
   const songDetect = useSongDetection()
   const [apiKey, setApiKey] = useState("")
   const [saved, setSaved] = useState(false)
+  const { sttBackend, setSttBackend } = useSettingsStore()
+  const [modelDownloaded, setModelDownloaded] = useState<boolean | null>(null)
+  const [downloading, setDownloading] = useState(false)
+
+  const checkModel = useCallback(async () => {
+    try {
+      const exists = await invoke<boolean>("whisper_model_exists")
+      setModelDownloaded(exists)
+    } catch {
+      setModelDownloaded(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (sttBackend === "local") {
+      checkModel()
+    }
+  }, [sttBackend, checkModel])
+
+  const handleDownloadModel = async () => {
+    setDownloading(true)
+    try {
+      await invoke<string>("download_whisper_model")
+      setModelDownloaded(true)
+    } catch (e) {
+      console.error("Failed to download Whisper model:", e)
+      alert(String(e))
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   const handleSaveKey = async () => {
     await translation.setApiKey(apiKey)
@@ -29,6 +63,73 @@ export function ServiceFeaturesSettings() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Speech-to-Text backend */}
+      <section className="rounded-lg border p-4">
+        <header className="mb-3">
+          <h3 className="text-sm font-semibold">Speech-to-Text</h3>
+        </header>
+        <div className="flex items-center gap-2 mb-3">
+          <label className="text-xs text-muted-foreground">Backend:</label>
+          <Select
+            value={sttBackend}
+            onValueChange={(v) => setSttBackend(v as "cloud" | "local")}
+          >
+            <SelectTrigger className="h-8 w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cloud">Cloud (Deepgram)</SelectItem>
+              <SelectItem value="local">Local (Whisper)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {sttBackend === "local" && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              {modelDownloaded === true && (
+                <span className="flex items-center gap-1 text-xs text-green-600">
+                  <CheckCircleIcon className="size-3.5" />
+                  Model downloaded
+                </span>
+              )}
+              {modelDownloaded === false && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadModel}
+                  disabled={downloading}
+                >
+                  {downloading ? (
+                    <>
+                      <LoaderIcon className="size-3.5 animate-spin mr-1" />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <DownloadIcon className="size-3.5 mr-1" />
+                      Download Model (~75MB)
+                    </>
+                  )}
+                </Button>
+              )}
+              {modelDownloaded === null && (
+                <span className="text-xs text-muted-foreground">Checking model...</span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              No internet or API key required after model download. Uses whisper.cpp
+              for on-device transcription.
+            </p>
+          </div>
+        )}
+        {sttBackend === "cloud" && (
+          <p className="text-xs text-muted-foreground">
+            Uses Deepgram Nova-3 for real-time transcription. Requires an API key
+            (configure in API Keys tab).
+          </p>
+        )}
+      </section>
+
       <section className="rounded-lg border p-4">
         <header className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold">Live Translation</h3>

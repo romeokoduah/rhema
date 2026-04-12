@@ -145,6 +145,7 @@ export function TranscriptPanel() {
         apiKey: deepgramApiKey ?? "",
         deviceId: settings.audioDeviceId,
         gain: settings.gain,
+        backend: settings.sttBackend ?? "cloud",
       })
       useTranscriptStore.getState().setTranscribing(true)
     } catch (e) {
