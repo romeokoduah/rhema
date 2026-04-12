@@ -49,6 +49,8 @@ jobs:
         run: |
           pip install meaningless
           python data/download-biblegateway.py
+        env:
+          PYTHONIOENCODING: utf-8
 
       - name: Build Bible SQLite database
         run: bun run build:bible
