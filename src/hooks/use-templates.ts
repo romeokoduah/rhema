@@ -36,6 +36,17 @@ export function useTemplates() {
         }
         await refreshTemplates()
       }
+
+      const backdrops = (await invoke("list_backdrops", { kind: null })) as Backdrop[]
+      store.setBackdrops(backdrops)
+      if (backdrops.length === 0) {
+        const { BUILTIN_BACKDROPS } = await import("@/lib/builtin-backdrops")
+        for (const b of BUILTIN_BACKDROPS) {
+          await invoke("create_backdrop", { backdrop: b })
+        }
+        const seeded = (await invoke("list_backdrops", { kind: null })) as Backdrop[]
+        store.setBackdrops(seeded)
+      }
     }
     init().catch(console.error)
   }, [refreshTemplates, refreshBackdrops])
