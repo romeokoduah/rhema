@@ -10,13 +10,16 @@ import {
 } from "@/components/ui/select"
 
 const FONT_FAMILIES = [
-  "Geist Variable",
-  "Source Serif 4 Variable",
-  "Georgia",
-  "Arial",
-  "Helvetica",
-  "Times New Roman",
-  "Courier New",
+  { value: "Inter Variable", label: "Inter" },
+  { value: "Geist Variable", label: "Geist" },
+  { value: "Source Serif 4 Variable", label: "Source Serif 4" },
+  { value: "Playfair Display Variable", label: "Playfair Display" },
+  { value: "Bebas Neue", label: "Bebas Neue" },
+  { value: "Great Vibes", label: "Great Vibes" },
+  { value: "Lato", label: "Lato" },
+  { value: "Georgia", label: "Georgia" },
+  { value: "Arial", label: "Arial" },
+  { value: "Times New Roman", label: "Times New Roman" },
 ]
 
 const FONT_WEIGHTS = [
@@ -113,8 +116,8 @@ function FontControls({ prefix }: { prefix: "verseText" | "reference" }) {
           </SelectTrigger>
           <SelectContent>
             {FONT_FAMILIES.map((f) => (
-              <SelectItem key={f} value={f}>
-                {f}
+              <SelectItem key={f.value} value={f.value}>
+                <span style={{ fontFamily: f.value }}>{f.label}</span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -331,6 +334,11 @@ function ReferenceProperties() {
 
   if (!draftTheme) return null
 
+  const shadow = draftTheme.reference.shadow ?? null
+  const outline = draftTheme.reference.outline ?? null
+  const shadowColor = shadow ? parseColorOpacity(shadow.color) : { hex: "#000000", opacity: 100 }
+  const outlineColor = outline ? parseColorOpacity(outline.color) : { hex: "#000000", opacity: 100 }
+
   return (
     <div className="flex flex-col gap-3">
       <SectionHeader title="Reference Text" description="Customize how reference text appears" />
@@ -363,6 +371,131 @@ function ReferenceProperties() {
             <SelectItem value="inline">Inline</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Text Shadow */}
+      <div className="flex flex-col gap-3 border-t pt-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold">Text Shadow</label>
+          <input
+            type="checkbox"
+            checked={shadow !== null}
+            onChange={(e) => {
+              if (e.target.checked) {
+                update("reference.shadow", { color: "#00000080", blur: 4, x: 2, y: 2 })
+              } else {
+                update("reference.shadow", null)
+              }
+            }}
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+        </div>
+        {shadow && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground">Offset X</label>
+                <span className="text-xs tabular-nums text-muted-foreground">{shadow.x}px</span>
+              </div>
+              <Slider min={-20} max={50} step={1} value={[shadow.x]} onValueChange={([v]) => update("reference.shadow.x", v)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground">Offset Y</label>
+                <span className="text-xs tabular-nums text-muted-foreground">{shadow.y}px</span>
+              </div>
+              <Slider min={-20} max={50} step={1} value={[shadow.y]} onValueChange={([v]) => update("reference.shadow.y", v)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground">Blur</label>
+                <span className="text-xs tabular-nums text-muted-foreground">{shadow.blur}px</span>
+              </div>
+              <Slider min={0} max={50} step={1} value={[shadow.blur]} onValueChange={([v]) => update("reference.shadow.blur", v)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Shadow Color</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={shadowColor.hex}
+                  onChange={(e) => update("reference.shadow.color", buildColorWithOpacity(e.target.value, shadowColor.opacity))}
+                  className="h-7 w-8 cursor-pointer rounded border border-input bg-transparent p-0.5"
+                />
+                <Input
+                  value={shadowColor.hex}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+                      update("reference.shadow.color", buildColorWithOpacity(v, shadowColor.opacity))
+                    }
+                  }}
+                  className="w-20 font-mono"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground">Opacity</label>
+                <span className="text-xs tabular-nums text-muted-foreground">{shadowColor.opacity}%</span>
+              </div>
+              <Slider
+                min={0} max={100} step={1}
+                value={[shadowColor.opacity]}
+                onValueChange={([v]) => update("reference.shadow.color", buildColorWithOpacity(shadowColor.hex, v))}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Text Outline */}
+      <div className="flex flex-col gap-3 border-t pt-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold">Text Outline</label>
+          <input
+            type="checkbox"
+            checked={outline !== null}
+            onChange={(e) => {
+              if (e.target.checked) {
+                update("reference.outline", { color: "#000000", width: 1 })
+              } else {
+                update("reference.outline", null)
+              }
+            }}
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+        </div>
+        {outline && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground">Width</label>
+                <span className="text-xs tabular-nums text-muted-foreground">{outline.width}px</span>
+              </div>
+              <Slider min={0} max={20} step={0.5} value={[outline.width]} onValueChange={([v]) => update("reference.outline.width", v)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Outline Color</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={outlineColor.hex}
+                  onChange={(e) => update("reference.outline.color", e.target.value)}
+                  className="h-7 w-8 cursor-pointer rounded border border-input bg-transparent p-0.5"
+                />
+                <Input
+                  value={outlineColor.hex}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+                      update("reference.outline.color", v)
+                    }
+                  }}
+                  className="w-20 font-mono"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

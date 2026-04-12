@@ -84,6 +84,8 @@ export interface BroadcastTheme {
     uppercase: boolean
     letterSpacing: number
     position: "above" | "below" | "inline"
+    shadow?: { color: string; blur: number; x: number; y: number } | null
+    outline?: { color: string; width: number } | null
   }
   layout: {
     anchor:
