@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo, type MouseEvent } from "react"
 import { invoke } from "@tauri-apps/api/core"
 // Using native overflow-y-auto instead of Radix ScrollArea for reliable scrolling in flex layouts
 import { Button } from "@/components/ui/button"
@@ -31,10 +31,12 @@ import {
   ArrowRightIcon,
   CheckIcon,
   SearchIcon,
+  PlusIcon,
 } from "lucide-react"
 import { useBible, bibleActions } from "@/hooks/use-bible"
 import { useBibleStore } from "@/stores"
-import type { Book, Verse } from "@/types"
+import { useQueueStore } from "@/stores/queue-store"
+import type { Book, Verse, QueueItem } from "@/types"
 import { Input } from "@/components/ui/input"
 import { searchContextWithFuse } from "@/lib/context-search"
 
@@ -78,6 +80,30 @@ export function SearchPanel() {
   const [contextQuery, setContextQuery] = useState("")
   const chapterInputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const [recentlyQueued, setRecentlyQueued] = useState<Set<string>>(new Set())
+
+  const addToQueue = useCallback((verse: Verse, e: MouseEvent) => {
+    e.stopPropagation()
+    const key = `${verse.book_number}-${verse.chapter}-${verse.verse}`
+    if (recentlyQueued.has(key)) return
+    const item: QueueItem = {
+      id: crypto.randomUUID(),
+      verse,
+      reference: `${verse.book_name} ${verse.chapter}:${verse.verse}`,
+      confidence: 1,
+      source: "manual",
+      added_at: Date.now(),
+    }
+    useQueueStore.getState().addItem(item)
+    setRecentlyQueued((prev) => new Set(prev).add(key))
+    setTimeout(() => {
+      setRecentlyQueued((prev) => {
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
+    }, 2000)
+  }, [recentlyQueued])
 
   const {
     translations,
@@ -555,6 +581,20 @@ export function SearchPanel() {
                   <p className="flex-1 text-sm leading-relaxed text-foreground/80">
                     {verse.text}
                   </p>
+                  <button
+                    onClick={(e) => addToQueue(verse, e)}
+                    className={cn(
+                      "shrink-0 rounded p-0.5 transition-colors",
+                      recentlyQueued.has(`${verse.book_number}-${verse.chapter}-${verse.verse}`)
+                        ? "text-ai-direct"
+                        : "text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100"
+                    )}
+                    title="Add to queue"
+                  >
+                    {recentlyQueued.has(`${verse.book_number}-${verse.chapter}-${verse.verse}`)
+                      ? <CheckIcon className="size-3.5" />
+                      : <PlusIcon className="size-3.5" />}
+                  </button>
                   {verse.id === effectiveSelectedVerseId && (
                     <CheckIcon className="size-4 shrink-0 text-ai-direct" />
                   )}
@@ -609,6 +649,31 @@ export function SearchPanel() {
                 <p className="flex-1 text-xs leading-relaxed text-muted-foreground">
                   <HighlightedText text={result.verse_text} query={contextQuery} />
                 </p>
+                <button
+                  onClick={(e) => {
+                    addToQueue({
+                      id: 0,
+                      translation_id: activeTranslationId,
+                      book_number: result.book_number,
+                      book_name: result.book_name,
+                      book_abbreviation: "",
+                      chapter: result.chapter,
+                      verse: result.verse,
+                      text: result.verse_text,
+                    }, e)
+                  }}
+                  className={cn(
+                    "shrink-0 self-start rounded p-0.5 transition-colors",
+                    recentlyQueued.has(`${result.book_number}-${result.chapter}-${result.verse}`)
+                      ? "text-ai-direct"
+                      : "text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100"
+                  )}
+                  title="Add to queue"
+                >
+                  {recentlyQueued.has(`${result.book_number}-${result.chapter}-${result.verse}`)
+                    ? <CheckIcon className="size-3.5" />
+                    : <PlusIcon className="size-3.5" />}
+                </button>
               </div>
             ))}
           </div>
