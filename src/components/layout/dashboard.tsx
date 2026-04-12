@@ -8,6 +8,7 @@ import { DetectionsPanel } from "@/components/panels/detections-panel"
 import { TranslationPanel } from "@/components/panels/translation-panel"
 import { SongsPanel } from "@/components/panels/songs-panel"
 import { SongLivePanel } from "@/components/panels/song-live-panel"
+import { AlertOverlay } from "@/components/broadcast/alert-overlay"
 import { useSongDetection } from "@/hooks/use-song-detection"
 
 export function Dashboard() {
@@ -26,6 +27,9 @@ export function Dashboard() {
       }}
       className="bg-background"
     >
+      {/* Alert overlay (absolute positioned) */}
+      <AlertOverlay />
+
       {/* Row 1: Transport Bar */}
       <div className="col-span-4">
         <TransportBar />

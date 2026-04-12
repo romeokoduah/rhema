@@ -4,6 +4,7 @@ import { LiveIndicator } from "@/components/ui/live-indicator"
 import { SessionTimer } from "@/components/ui/session-timer"
 import { Badge } from "@/components/ui/badge"
 import { MicIcon, PaletteIcon, CastIcon } from "lucide-react"
+import { AlertSendButton } from "@/components/broadcast/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { ThemeDesigner } from "@/components/broadcast/theme-designer"
@@ -40,6 +41,7 @@ export function TransportBar() {
           <LevelMeter level={audioLevel.rms} bars={4} />
         </div>
         <LiveIndicator active={isTranscribing} />
+        <AlertSendButton />
         <Button
           variant="ghost"
           size="icon-sm"
