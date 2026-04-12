@@ -11,11 +11,15 @@ import { SongLivePanel } from "@/components/panels/song-live-panel"
 import { CountdownPanel } from "@/components/panels/countdown-panel"
 import { AlertOverlay } from "@/components/broadcast/alert-overlay"
 import { useSongDetection } from "@/hooks/use-song-detection"
+import { useTemplates } from "@/hooks/use-templates"
 
 export function Dashboard() {
   // Subscribe to song_match events globally so auto-detect works regardless
   // of which panels are mounted. Translation is mounted inside TranslationPanel.
   useSongDetection()
+
+  // Load templates + backdrops on app start; seeds built-ins on first launch
+  useTemplates()
 
   return (
     <div
