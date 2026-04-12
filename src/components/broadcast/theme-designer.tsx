@@ -6,6 +6,7 @@ import { SaveIcon, TrashIcon, XIcon } from "lucide-react"
 import { ThemeLibrary } from "@/components/broadcast/theme-library"
 import { DesignCanvas } from "@/components/broadcast/design-canvas"
 import { PropertiesPanel } from "@/components/broadcast/properties-panel"
+import { EditorToolbar } from "@/components/editor/toolbar"
 
 export function ThemeDesigner() {
   const isDesignerOpen = useBroadcastStore((s) => s.isDesignerOpen)
@@ -89,8 +90,11 @@ export function ThemeDesigner() {
             {/* Left: Theme Library */}
             <ThemeLibrary />
 
-            {/* Center: Design Canvas */}
-            <DesignCanvas />
+            {/* Center: Toolbar + Design Canvas */}
+            <div className="flex flex-col overflow-hidden">
+              <EditorToolbar />
+              <DesignCanvas />
+            </div>
 
             {/* Right: Properties Panel */}
             <PropertiesPanel />
