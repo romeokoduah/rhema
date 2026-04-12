@@ -844,6 +844,21 @@ fn run_quotation_matching(app: &AppHandle, transcript: &str) {
     let _ = app.emit("verse_detections", &results);
 }
 
+/// Check if the local Whisper model has been downloaded.
+#[tauri::command]
+pub async fn whisper_model_exists(app: AppHandle) -> Result<bool, String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    Ok(rhema_stt::whisper_model::model_exists(&data_dir))
+}
+
+/// Download the local Whisper model (~75MB) to the app data directory.
+#[tauri::command]
+pub async fn download_whisper_model(app: AppHandle) -> Result<String, String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let path = rhema_stt::whisper_model::download_model(&data_dir).await?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 /// Stop the transcription pipeline (audio capture + Deepgram).
 #[tauri::command]
 pub fn stop_transcription(
