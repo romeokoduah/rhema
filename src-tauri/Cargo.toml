@@ -47,7 +47,7 @@ tauri-plugin-log = "2"
 tauri-plugin-store = "2"
 rhema-audio = { path = "crates/audio" }
 rhema-bible = { path = "crates/bible" }
-rhema-stt = { path = "crates/stt" }
+rhema-stt = { path = "crates/stt", features = ["local-whisper"] }
 rhema-broadcast = { path = "crates/broadcast" }
 rhema-detection = { path = "crates/detection", features = ["onnx", "vector-search"] }
 rhema-translate = { path = "crates/translate" }
