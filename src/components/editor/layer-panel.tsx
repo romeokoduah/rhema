@@ -274,7 +274,7 @@ export function LayerPanel({ canvas }: LayerPanelProps) {
   )
 
   const handleDragEnd = useCallback(
-    (event: { operation: { source?: { id: unknown }; target?: { id: unknown } } | null }) => {
+    (event: { operation: { source?: { id: unknown } | null; target?: { id: unknown } | null } | null }) => {
       if (!canvas || !event.operation) return
 
       const { source, target } = event.operation

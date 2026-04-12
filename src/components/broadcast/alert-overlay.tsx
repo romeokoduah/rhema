@@ -34,7 +34,7 @@ export function AlertOverlay() {
       : templateStore.getActiveTemplate("alert")
 
     if (template) {
-      const filledJson = fillTemplateSlots(template.canvas_json, template.slots_json, {
+      fillTemplateSlots(template.canvas_json, template.slots_json, {
         icon: currentAlert.icon,
         title: currentAlert.title,
         body: currentAlert.body,

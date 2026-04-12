@@ -31,7 +31,7 @@ function buildColorWithOpacity(hex: string, opacity: number): string {
   return `${hex}${alphaHex}`
 }
 
-function SolidSection() {
+export function SolidSection() {
   const draftTheme = useBroadcastStore((s) => s.draftTheme)
   const update = useBroadcastStore((s) => s.updateDraftNested)
 
@@ -62,7 +62,7 @@ function SolidSection() {
   )
 }
 
-function GradientSection() {
+export function GradientSection() {
   const draftTheme = useBroadcastStore((s) => s.draftTheme)
   const update = useBroadcastStore((s) => s.updateDraftNested)
 
@@ -179,7 +179,7 @@ function GradientSection() {
   )
 }
 
-function ImageSection() {
+export function ImageSection() {
   const draftTheme = useBroadcastStore((s) => s.draftTheme)
   const update = useBroadcastStore((s) => s.updateDraftNested)
 

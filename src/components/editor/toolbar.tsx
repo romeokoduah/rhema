@@ -116,7 +116,7 @@ export function EditorToolbar() {
       originY: "center",
     })
     // Attach a unique id
-    ;(obj as fabric.FabricObject & { id: string }).id = crypto.randomUUID()
+    ;(obj as unknown as fabric.FabricObject & { id: string }).id = crypto.randomUUID()
     canvas.add(obj)
     canvas.setActiveObject(obj)
     canvas.requestRenderAll()
@@ -135,7 +135,7 @@ export function EditorToolbar() {
       originX: "center",
       originY: "center",
     })
-    ;(obj as fabric.FabricObject & { id: string }).id = crypto.randomUUID()
+    ;(obj as unknown as fabric.FabricObject & { id: string }).id = crypto.randomUUID()
     canvas.add(obj)
     canvas.setActiveObject(obj)
     canvas.requestRenderAll()
@@ -153,7 +153,7 @@ export function EditorToolbar() {
       originX: "center",
       originY: "center",
     })
-    ;(obj as fabric.FabricObject & { id: string }).id = crypto.randomUUID()
+    ;(obj as unknown as fabric.FabricObject & { id: string }).id = crypto.randomUUID()
     canvas.add(obj)
     canvas.setActiveObject(obj)
     canvas.requestRenderAll()
@@ -182,7 +182,7 @@ export function EditorToolbar() {
           if (maxDim > 600) {
             img.scale(600 / maxDim)
           }
-          ;(img as fabric.FabricObject & { id: string }).id = crypto.randomUUID()
+          ;(img as unknown as fabric.FabricObject & { id: string }).id = crypto.randomUUID()
           canvas.add(img)
           canvas.setActiveObject(img)
           canvas.requestRenderAll()
