@@ -89,6 +89,12 @@ pub fn run() {
                     log::warn!("Failed to apply songs migration: {e}");
                 }
 
+                if let Err(e) = bible_db.apply_sql(include_str!(
+                    "../../data/migrations/002_templates.sql"
+                )) {
+                    log::warn!("Failed to apply templates migration: {e}");
+                }
+
                 // Build quotation matching index from all English verses
                 log::info!("Building quotation matching index...");
                 let quotation_matcher = match bible_db.load_all_verses_for_quotation(Some("en")) {

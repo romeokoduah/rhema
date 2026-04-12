@@ -103,7 +103,7 @@ function main() {
   }
 
   // Apply migrations (idempotent; ensures fresh builds include post-schema additions)
-  const MIGRATIONS = ["001_songs.sql"]
+  const MIGRATIONS = ["001_songs.sql", "002_templates.sql"]
   for (const mig of MIGRATIONS) {
     const migPath = join(DATA_DIR, "migrations", mig)
     const migSql = readFileSync(migPath, "utf-8")
