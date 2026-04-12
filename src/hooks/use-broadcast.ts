@@ -1,4 +1,5 @@
 import { useBroadcastStore } from "@/stores/broadcast-store"
+import type { TemplateContent } from "@/stores/broadcast-store"
 import type { VerseRenderData } from "@/types"
 import type { Verse } from "@/types"
 
@@ -31,4 +32,8 @@ export const broadcastActions = {
     const s = useBroadcastStore.getState()
     return s.themes.find((t) => t.id === s.activeThemeId) ?? s.themes[0]
   },
+  sendTemplateContent: (content: TemplateContent) =>
+    useBroadcastStore.getState().sendTemplateContent(content),
+  clearTemplateBroadcast: () =>
+    useBroadcastStore.getState().clearTemplateBroadcast(),
 }

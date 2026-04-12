@@ -1,9 +1,27 @@
 import { create } from "zustand"
 import { emitTo } from "@tauri-apps/api/event"
 import type { BroadcastTheme, VerseRenderData } from "@/types"
+import type { TemplateCategory } from "@/types/template"
 import { BUILTIN_THEMES } from "@/lib/builtin-themes"
+import { useTemplateStore } from "@/stores/template-store"
+import { fillTemplateSlots } from "@/lib/fill-template-slots"
 
 type SelectedElement = "verse" | "reference" | null
+
+export interface TemplateContent {
+  kind: "verse" | "song" | "announcement" | "countdown" | "alert" | "clear"
+  templateId: number | null
+  slotValues: Record<string, string>
+}
+
+const KIND_TO_CATEGORY: Record<TemplateContent["kind"], TemplateCategory | null> = {
+  verse: "verse",
+  song: "lyrics",
+  announcement: "announcement",
+  countdown: "countdown",
+  alert: "alert",
+  clear: null,
+}
 
 interface BroadcastState {
   themes: BroadcastTheme[]
@@ -11,6 +29,7 @@ interface BroadcastState {
   altActiveThemeId: string
   isLive: boolean
   liveVerse: VerseRenderData | null
+  liveTemplateJson: string | null
 
   // Designer state
   isDesignerOpen: boolean
@@ -29,6 +48,10 @@ interface BroadcastState {
   setLiveVerse: (verse: VerseRenderData | null) => void
   syncBroadcastOutput: () => void
   syncBroadcastOutputFor: (outputId: string) => void
+
+  // Template-based broadcast
+  sendTemplateContent: (content: TemplateContent) => void
+  clearTemplateBroadcast: () => void
 
   // Designer actions
   setDesignerOpen: (open: boolean) => void
@@ -76,6 +99,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
   altActiveThemeId: BUILTIN_THEMES[0].id,
   isLive: false,
   liveVerse: null,
+  liveTemplateJson: null,
   isDesignerOpen: false,
   editingThemeId: null,
   draftTheme: null,
@@ -135,6 +159,50 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
   setLiveVerse: (liveVerse) => {
     set({ liveVerse })
     get().syncBroadcastOutput()
+  },
+
+  sendTemplateContent: (content) => {
+    if (content.kind === "clear") {
+      get().clearTemplateBroadcast()
+      return
+    }
+
+    const category = KIND_TO_CATEGORY[content.kind]
+    if (!category) return
+
+    const templateStore = useTemplateStore.getState()
+    let template = content.templateId != null
+      ? templateStore.templates.find((t) => t.id === content.templateId) ?? null
+      : null
+
+    if (!template) {
+      template = templateStore.getActiveTemplate(category)
+    }
+
+    if (!template) {
+      set({ liveTemplateJson: null })
+      return
+    }
+
+    const filledJson = fillTemplateSlots(template.canvas_json, template.slots_json, content.slotValues)
+    set({ liveTemplateJson: filledJson })
+
+    void emitTo("broadcast", "broadcast:template-update", {
+      templateJson: filledJson,
+    }).catch(() => {})
+    void emitTo("broadcast-alt", "broadcast:template-update", {
+      templateJson: filledJson,
+    }).catch(() => {})
+  },
+
+  clearTemplateBroadcast: () => {
+    set({ liveTemplateJson: null })
+    void emitTo("broadcast", "broadcast:template-update", {
+      templateJson: null,
+    }).catch(() => {})
+    void emitTo("broadcast-alt", "broadcast:template-update", {
+      templateJson: null,
+    }).catch(() => {})
   },
 
   // Designer

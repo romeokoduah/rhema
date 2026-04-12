@@ -23,7 +23,18 @@ function QueueItemRow({
     bibleActions.selectVerse(item.verse)
     const translation = useBibleStore.getState().translations
       .find(t => t.id === useBibleStore.getState().activeTranslationId)?.abbreviation ?? "KJV"
-    useBroadcastStore.getState().setLiveVerse(toVerseRenderData(item.verse, translation))
+    const renderData = toVerseRenderData(item.verse, translation)
+    useBroadcastStore.getState().setLiveVerse(renderData)
+
+    // Also send through the template system
+    useBroadcastStore.getState().sendTemplateContent({
+      kind: "verse",
+      templateId: null,
+      slotValues: {
+        reference: renderData.reference,
+        verse_text: renderData.segments.map((s) => s.text).join(" "),
+      },
+    })
   }
 
   const handleRemove = () => {

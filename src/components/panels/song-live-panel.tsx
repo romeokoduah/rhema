@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useSongsStore } from "@/stores/songs-store"
+import { useBroadcastStore } from "@/stores/broadcast-store"
 import { invoke } from "@tauri-apps/api/core"
 
 export function SongLivePanel() {
@@ -43,6 +44,17 @@ export function SongLivePanel() {
       title: activeSong.title,
       label: section.label,
       lines: section.lines,
+    })
+
+    // Also send through the template system
+    useBroadcastStore.getState().sendTemplateContent({
+      kind: "song",
+      templateId: null,
+      slotValues: {
+        section_label: section.label,
+        lyrics: section.lines.join("\n"),
+        title: activeSong.title,
+      },
     })
   }
 
