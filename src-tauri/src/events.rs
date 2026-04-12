@@ -5,6 +5,7 @@ pub const EVENT_TRANSLATION_CHUNK: &str = "translation_chunk";
 pub const EVENT_SONG_MATCH: &str = "song_match";
 #[allow(dead_code)]
 pub const EVENT_SONG_MATCH_RELEASED: &str = "song_match_released";
+pub const EVENT_VOICE_COMMAND: &str = "voice_command";
 
 #[derive(Clone, serde::Serialize)]
 pub struct SongMatchPayload {

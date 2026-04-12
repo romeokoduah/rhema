@@ -6,6 +6,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use crate::events::{
     AudioLevelPayload, SongMatchPayload, TranscriptPayload, TranslationPayload, EVENT_AUDIO_LEVEL,
     EVENT_SONG_MATCH, EVENT_TRANSCRIPT_FINAL, EVENT_TRANSCRIPT_PARTIAL, EVENT_TRANSLATION_CHUNK,
+    EVENT_VOICE_COMMAND,
 };
 use crate::state::AppState;
 use rhema_audio::{AudioConfig, AudioFrame};
@@ -357,6 +358,7 @@ pub async fn start_transcription(
                         // already detected it at 100%.
                         if !direct_found {
                             if let Some(sentence) = sentence_buf.append(&transcript) {
+                                fan_out_voice_command(&event_app, &sentence);
                                 fan_out_translation(&event_app, &sentence);
                                 fan_out_song_detect(&event_app, &sentence);
                                 let _ = semantic_tx.try_send(sentence);
@@ -364,6 +366,7 @@ pub async fn start_transcription(
                         } else {
                             // Clear the sentence buffer — direct handled it
                             if let Some(sentence) = sentence_buf.force_flush() {
+                                fan_out_voice_command(&event_app, &sentence);
                                 fan_out_translation(&event_app, &sentence);
                                 fan_out_song_detect(&event_app, &sentence);
                             }
@@ -373,6 +376,7 @@ pub async fn start_transcription(
                     // On speech_final: force-flush any remaining buffered text
                     if speech_final {
                         if let Some(sentence) = sentence_buf.force_flush() {
+                            fan_out_voice_command(&event_app, &sentence);
                             fan_out_translation(&event_app, &sentence);
                             fan_out_song_detect(&event_app, &sentence);
                             let _ = semantic_tx.try_send(sentence);
@@ -382,6 +386,7 @@ pub async fn start_transcription(
                 TranscriptEvent::UtteranceEnd => {
                     // Fallback: flush sentence buffer on utterance end
                     if let Some(sentence) = sentence_buf.force_flush() {
+                        fan_out_voice_command(&event_app, &sentence);
                         fan_out_translation(&event_app, &sentence);
                         fan_out_song_detect(&event_app, &sentence);
                         let _ = semantic_tx.try_send(sentence);
@@ -409,6 +414,14 @@ pub async fn start_transcription(
     });
 
     Ok(())
+}
+
+/// Check for voice navigation commands in a finalized sentence and emit
+/// `voice_command` event if one is found.
+fn fan_out_voice_command(app: &AppHandle, sentence: &str) {
+    if let Some(cmd) = rhema_detection::voice_command::parse_voice_command(sentence) {
+        let _ = app.emit(EVENT_VOICE_COMMAND, cmd);
+    }
 }
 
 /// Fan-out translation for a finalized sentence. Non-blocking: reads translator

@@ -12,11 +12,15 @@ import { CountdownPanel } from "@/components/panels/countdown-panel"
 import { AlertOverlay } from "@/components/broadcast/alert-overlay"
 import { useSongDetection } from "@/hooks/use-song-detection"
 import { useTemplates } from "@/hooks/use-templates"
+import { useVoiceNavigation } from "@/hooks/use-voice-navigation"
 
 export function Dashboard() {
   // Subscribe to song_match events globally so auto-detect works regardless
   // of which panels are mounted. Translation is mounted inside TranslationPanel.
   useSongDetection()
+
+  // Voice navigation: parse commands from transcript and navigate Bible
+  useVoiceNavigation()
 
   // Load templates + backdrops on app start; seeds built-ins on first launch
   useTemplates()
