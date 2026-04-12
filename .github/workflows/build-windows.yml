@@ -40,6 +40,16 @@ jobs:
       - name: Download public-domain Bible data
         run: bun run download:bible-data
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download copyrighted Bible translations
+        run: |
+          pip install meaningless
+          python data/download-biblegateway.py
+
       - name: Build Bible SQLite database
         run: bun run build:bible
 
