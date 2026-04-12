@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { BackdropPicker } from "@/components/editor/backdrop-picker"
 
 function parseColorOpacity(color: string): { hex: string; opacity: number } {
   if (color.length === 9 && color.startsWith("#")) {
@@ -443,51 +444,26 @@ export function BackgroundProperties() {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Background Type */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-muted-foreground">Background Type</label>
-        <Select
-          value={bgType}
-          onValueChange={(v) => {
-            update("background.type", v)
-            // Initialize gradient/image if switching to those types
-            if (v === "gradient" && !draftTheme.background.gradient) {
-              update("background.gradient", {
-                type: "linear",
-                angle: 180,
-                stops: [
-                  { color: "#000000", position: 0 },
-                  { color: "#ffffff", position: 100 },
-                ],
-              })
-            }
-            if (v === "image" && !draftTheme.background.image) {
-              update("background.image", {
-                url: "",
-                fit: "cover",
-                blur: 0,
-                brightness: 100,
-                tint: null,
-              })
+      {/* Backdrop Picker (tabbed: Solid / Gradient / Image) */}
+      <BackdropPicker />
+
+      {/* Transparent option */}
+      <div className="flex items-center justify-between border-t pt-3">
+        <label className="text-xs font-medium text-muted-foreground">Transparent (NDI overlay)</label>
+        <input
+          type="checkbox"
+          checked={bgType === "transparent"}
+          onChange={(e) => {
+            if (e.target.checked) {
+              update("background.type", "transparent")
+            } else {
+              update("background.type", "solid")
             }
           }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="solid">Solid Color</SelectItem>
-            <SelectItem value="gradient">Gradient</SelectItem>
-            <SelectItem value="image">Image</SelectItem>
-            <SelectItem value="transparent">Transparent</SelectItem>
-          </SelectContent>
-        </Select>
+          className="h-4 w-4 rounded border-input accent-primary"
+        />
       </div>
 
-      {/* Conditional sections */}
-      {bgType === "solid" && <SolidSection />}
-      {bgType === "gradient" && <GradientSection />}
-      {bgType === "image" && <ImageSection />}
       {bgType === "transparent" && <TransparentSection />}
 
       {/* Text Box - always visible */}
