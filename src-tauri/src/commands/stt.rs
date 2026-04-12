@@ -28,7 +28,10 @@ pub async fn start_transcription(
     api_key: String,
     device_id: Option<String>,
     gain: Option<f32>,
+    backend: Option<String>,
 ) -> Result<(), String> {
+    let use_local = backend.as_deref() == Some("local");
+
     // ── 1. Guard: already running? ──────────────────────────────────────
     let (stt_active, audio_active) = {
         let app_state = state.lock().map_err(|e| e.to_string())?;
@@ -38,26 +41,42 @@ pub async fn start_transcription(
         (app_state.stt_active.clone(), app_state.audio_active.clone())
     };
 
-    // Resolve API key: use provided key, or fall back to DEEPGRAM_API_KEY env var
-    let resolved_api_key = if api_key.is_empty() {
-        std::env::var("DEEPGRAM_API_KEY").unwrap_or_default()
+    // For local Whisper backend, validate the model exists
+    let whisper_model_path = if use_local {
+        let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+        let path = rhema_stt::whisper_model::model_path(&data_dir);
+        if !path.exists() {
+            return Err("Whisper model not downloaded. Please download it in Settings first.".into());
+        }
+        Some(path)
     } else {
-        api_key
+        None
     };
 
-    if resolved_api_key.is_empty() {
-        return Err("No Deepgram API key provided. Set it in Settings or via DEEPGRAM_API_KEY env var.".into());
-    }
+    // Resolve API key for cloud backend
+    let resolved_api_key = if !use_local {
+        let key = if api_key.is_empty() {
+            std::env::var("DEEPGRAM_API_KEY").unwrap_or_default()
+        } else {
+            api_key.clone()
+        };
+        if key.is_empty() {
+            return Err("No Deepgram API key provided. Set it in Settings or via DEEPGRAM_API_KEY env var.".into());
+        }
+        key
+    } else {
+        String::new()
+    };
 
-    log::info!("Starting transcription: api_key={}..., device_id={:?}, gain={:?}",
-        &resolved_api_key[..8.min(resolved_api_key.len())], device_id, gain);
+    log::info!("Starting transcription: backend={}, device_id={:?}, gain={:?}",
+        if use_local { "local" } else { "cloud" }, device_id, gain);
 
     stt_active.store(true, Ordering::SeqCst);
     audio_active.store(true, Ordering::SeqCst);
 
     // ── 2. Prepare channels ─────────────────────────────────────────────
-    // Deepgram channel carries Vec<i16> (the samples from each AudioFrame).
-    let (deepgram_tx, deepgram_rx) = crossbeam_channel::bounded::<Vec<i16>>(64);
+    // Audio channel carries Vec<i16> (the samples from each AudioFrame).
+    let (audio_tx_ch, audio_rx_ch) = crossbeam_channel::bounded::<Vec<i16>>(64);
 
     // ── 3. Spawn the audio-capture + fan-out thread ─────────────────────
     // cpal's `Stream` (inside `AudioCapture`) is !Send, so we must create
@@ -121,7 +140,7 @@ pub async fn start_transcription(
                         // NOTE: VAD module exists (audio/vad.rs) but disabled —
                         // Deepgram's built-in VAD handles silence detection.
                         // Re-enable when VAD thresholds are properly tuned.
-                        let _ = deepgram_tx.try_send(frame.samples);
+                        let _ = audio_tx_ch.try_send(frame.samples);
                     }
                     Err(crossbeam_channel::RecvTimeoutError::Timeout) => continue,
                     Err(crossbeam_channel::RecvTimeoutError::Disconnected) => break,
@@ -138,94 +157,113 @@ pub async fn start_transcription(
             format!("Failed to spawn audio fanout thread: {e}")
         })?;
 
-    // ── 4. Spawn the Deepgram connection on the tokio runtime ───────────
-    let stt_config = SttConfig {
-        api_key: resolved_api_key,
-        model: "nova-3".to_string(),
-        sample_rate: 16_000,
-        encoding: "linear16".to_string(),
-        language: None,
-    };
-
-    let client = DeepgramClient::new(stt_config.clone());
-
+    // ── 4. Spawn the STT backend ──────────────────────────────────────
     let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<TranscriptEvent>(64);
 
     let conn_active = stt_active.clone();
 
-    // Task A: run the Deepgram WebSocket connection.
-    // On max reconnect failure, falls back to REST mode (hybrid).
-    let rest_event_tx = event_tx.clone();
-    let rest_config = stt_config.clone();
-    tauri::async_runtime::spawn(async move {
-        let result = client.connect(deepgram_rx.clone(), event_tx).await;
-        if let Err(e) = result {
-            log::error!("Deepgram WebSocket failed: {e}");
+    if use_local {
+        // ── Local Whisper backend ──
+        let model_path = whisper_model_path.unwrap();
+        let whisper_event_tx = event_tx.clone();
+        let whisper_active = stt_active.clone();
+        rhema_stt::local_whisper::WhisperClient::start(
+            &model_path,
+            audio_rx_ch,
+            whisper_event_tx,
+            whisper_active,
+        )
+        .map_err(|e| {
+            stt_active.store(false, Ordering::SeqCst);
+            audio_active.store(false, Ordering::SeqCst);
+            e
+        })?;
+    } else {
+        // ── Cloud Deepgram backend ──
+        let stt_config = SttConfig {
+            api_key: resolved_api_key,
+            model: "nova-3".to_string(),
+            sample_rate: 16_000,
+            encoding: "linear16".to_string(),
+            language: None,
+        };
 
-            // ── Hybrid mode: fall back to REST transcription ──
-            {
-                log::warn!("[STT] Connection unstable, switching to Hybrid mode (REST fallback)");
-                let _ = rest_event_tx
-                    .send(TranscriptEvent::Error(
-                        "Connection unstable, switching to Hybrid mode".into(),
-                    ))
-                    .await;
+        let client = DeepgramClient::new(stt_config.clone());
 
-                let rest_client = rhema_stt::DeepgramRestClient::new(rest_config);
-                let mut audio_buffer: Vec<i16> = Vec::new();
-                let flush_interval = std::time::Duration::from_secs(5);
-                let mut last_flush = std::time::Instant::now();
+        // Task A: run the Deepgram WebSocket connection.
+        // On max reconnect failure, falls back to REST mode (hybrid).
+        let rest_event_tx = event_tx.clone();
+        let rest_config = stt_config.clone();
+        tauri::async_runtime::spawn(async move {
+            let result = client.connect(audio_rx_ch.clone(), event_tx).await;
+            if let Err(e) = result {
+                log::error!("Deepgram WebSocket failed: {e}");
 
-                loop {
-                    if !conn_active.load(Ordering::SeqCst) {
-                        break;
-                    }
+                // ── Hybrid mode: fall back to REST transcription ──
+                {
+                    log::warn!("[STT] Connection unstable, switching to Hybrid mode (REST fallback)");
+                    let _ = rest_event_tx
+                        .send(TranscriptEvent::Error(
+                            "Connection unstable, switching to Hybrid mode".into(),
+                        ))
+                        .await;
 
-                    match deepgram_rx.recv_timeout(std::time::Duration::from_millis(100)) {
-                        Ok(samples) => {
-                            audio_buffer.extend(samples);
+                    let rest_client = rhema_stt::DeepgramRestClient::new(rest_config);
+                    let mut audio_buffer: Vec<i16> = Vec::new();
+                    let flush_interval = std::time::Duration::from_secs(5);
+                    let mut last_flush = std::time::Instant::now();
 
-                            // Flush every 5 seconds of accumulated audio
-                            if last_flush.elapsed() >= flush_interval && !audio_buffer.is_empty() {
-                                match rest_client.transcribe(&audio_buffer).await {
-                                    Ok(events) => {
-                                        for evt in events {
-                                            let _ = rest_event_tx.send(evt).await;
+                    loop {
+                        if !conn_active.load(Ordering::SeqCst) {
+                            break;
+                        }
+
+                        match audio_rx_ch.recv_timeout(std::time::Duration::from_millis(100)) {
+                            Ok(samples) => {
+                                audio_buffer.extend(samples);
+
+                                // Flush every 5 seconds of accumulated audio
+                                if last_flush.elapsed() >= flush_interval && !audio_buffer.is_empty() {
+                                    match rest_client.transcribe(&audio_buffer).await {
+                                        Ok(events) => {
+                                            for evt in events {
+                                                let _ = rest_event_tx.send(evt).await;
+                                            }
+                                        }
+                                        Err(e) => {
+                                            log::error!("[STT-REST] Transcription failed: {e}");
                                         }
                                     }
-                                    Err(e) => {
-                                        log::error!("[STT-REST] Transcription failed: {e}");
-                                    }
+                                    audio_buffer.clear();
+                                    last_flush = std::time::Instant::now();
                                 }
-                                audio_buffer.clear();
-                                last_flush = std::time::Instant::now();
                             }
-                        }
-                        Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
-                            // Flush if we have audio and enough time has passed
-                            if last_flush.elapsed() >= flush_interval && !audio_buffer.is_empty() {
-                                match rest_client.transcribe(&audio_buffer).await {
-                                    Ok(events) => {
-                                        for evt in events {
-                                            let _ = rest_event_tx.send(evt).await;
+                            Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
+                                // Flush if we have audio and enough time has passed
+                                if last_flush.elapsed() >= flush_interval && !audio_buffer.is_empty() {
+                                    match rest_client.transcribe(&audio_buffer).await {
+                                        Ok(events) => {
+                                            for evt in events {
+                                                let _ = rest_event_tx.send(evt).await;
+                                            }
+                                        }
+                                        Err(e) => {
+                                            log::error!("[STT-REST] Transcription failed: {e}");
                                         }
                                     }
-                                    Err(e) => {
-                                        log::error!("[STT-REST] Transcription failed: {e}");
-                                    }
+                                    audio_buffer.clear();
+                                    last_flush = std::time::Instant::now();
                                 }
-                                audio_buffer.clear();
-                                last_flush = std::time::Instant::now();
                             }
+                            Err(crossbeam_channel::RecvTimeoutError::Disconnected) => break,
                         }
-                        Err(crossbeam_channel::RecvTimeoutError::Disconnected) => break,
                     }
                 }
             }
-        }
-        conn_active.store(false, Ordering::SeqCst);
-        log::info!("Deepgram connection task exited");
-    });
+            conn_active.store(false, Ordering::SeqCst);
+            log::info!("Deepgram connection task exited");
+        });
+    }
 
     // Task B: consume TranscriptEvents, emit to frontend, run detection
     let evt_active = stt_active.clone();
