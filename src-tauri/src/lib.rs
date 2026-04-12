@@ -62,6 +62,14 @@ pub fn run() {
             commands::songs::broadcast_song_section,
             commands::songs::set_song_autodetect_enabled,
             commands::songs::set_song_autodetect_sensitivity,
+            commands::templates::list_templates,
+            commands::templates::get_template,
+            commands::templates::create_template,
+            commands::templates::update_template,
+            commands::templates::delete_template,
+            commands::templates::list_backdrops,
+            commands::templates::create_backdrop,
+            commands::templates::delete_backdrop,
         ])
         .setup(|app| {
             use tauri::Manager;
