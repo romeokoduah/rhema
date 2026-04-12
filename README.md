@@ -255,3 +255,29 @@ This fork adds three service-oriented features on top of the base verse-detectio
 - **Song auto-detection (experimental).** While transcription is active, the app fuzzy-matches the rolling transcript window against indexed song lyrics and automatically advances the Song Live panel when it locks onto a song. Works best with clear vocals; results are inconsistent with full-band worship. Sensitivity slider lives in Settings → Service Features.
 
 The translation/songs features are independent — you can use any subset. Song auto-detect requires the Song library to be populated first.
+
+## Theme & Presentation Editor
+
+Rhema includes a full WYSIWYG broadcast graphics editor with 25 built-in templates across 6 categories:
+
+- **Lower Thirds** (5 templates) — Speaker names, verse references, announcements as bottom overlays
+- **Full-Screen Scripture** (4 templates) — Verse display for congregational reading
+- **Full-Screen Lyrics** (4 templates) — Worship lyrics with section labels
+- **Announcements** (4 templates) — Event cards, announcements, information displays
+- **Countdown Timers** (4 templates) — Pre-service countdowns with customizable labels
+- **Alert Banners** (4 templates) — Nursery alerts, parking notices, prayer requests
+
+### Editor Features
+- Drag-and-drop WYSIWYG canvas (1920×1080)
+- Layer management with z-order control
+- Text styling: fonts, shadows, outlines, letter spacing
+- Backdrop system: solid colors, gradients, uploaded images
+- Add text, shapes, and images
+- Undo/redo (50 levels)
+- Templates persist in SQLite and survive app restarts
+
+### Countdown Timer
+Set a duration and label, then broadcast to NDI. Timer ticks down and auto-stops at 0:00.
+
+### Alert System
+Send notification banners that overlay on top of current broadcast content. Alerts queue automatically and auto-dismiss after a configurable timeout.
