@@ -1,12 +1,15 @@
 import { useBroadcastStore } from "@/stores/broadcast-store"
+import { useCanvasStore } from "@/stores/canvas-store"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TextProperties } from "@/components/broadcast/text-properties"
 import { BackgroundProperties } from "@/components/broadcast/background-properties"
 import { LayoutProperties } from "@/components/broadcast/layout-properties"
+import { LayerPanel } from "@/components/editor/layer-panel"
 
 export function PropertiesPanel() {
   const draftTheme = useBroadcastStore((s) => s.draftTheme)
   const selectedElement = useBroadcastStore((s) => s.selectedElement)
+  const canvas = useCanvasStore((s) => s.canvas)
 
   if (!draftTheme) {
     return (
@@ -53,6 +56,9 @@ export function PropertiesPanel() {
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Layer Panel */}
+      <LayerPanel canvas={canvas} />
     </div>
   )
 }

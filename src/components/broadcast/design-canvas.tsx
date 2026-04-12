@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import * as fabric from "fabric"
 import { useBroadcastStore } from "@/stores"
+import { useCanvasStore } from "@/stores/canvas-store"
 import { renderVerse } from "@/lib/verse-renderer"
 import { Button } from "@/components/ui/button"
 import {
@@ -176,6 +177,7 @@ export function DesignCanvas() {
     })
 
     fabricRef.current = canvas
+    useCanvasStore.getState().setCanvas(canvas)
 
     // Auto-zoom after a tick (canvas needs to be in DOM)
     requestAnimationFrame(() => {
@@ -188,6 +190,7 @@ export function DesignCanvas() {
 
     return () => {
       observer.disconnect()
+      useCanvasStore.getState().setCanvas(null)
       void canvas.dispose()
       fabricRef.current = null
       objectsRef.current = { workspace: null, referenceRegion: null, verseRegion: null }
