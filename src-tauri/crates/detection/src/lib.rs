@@ -9,6 +9,7 @@ pub mod reading_mode;
 pub mod context;
 pub mod quotation;
 pub mod song_detect;
+pub mod voice_command;
 
 pub use types::*;
 pub use error::*;

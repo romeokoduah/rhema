@@ -9,6 +9,7 @@ serde_json.workspace = true
 log.workspace = true
 thiserror.workspace = true
 aho-corasick = "1"
+regex = "1"
 lru = "0.12"
 rhema-bible = { path = "../bible" }
 
