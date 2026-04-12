@@ -3,18 +3,28 @@ import { LevelMeter } from "@/components/ui/level-meter"
 import { LiveIndicator } from "@/components/ui/live-indicator"
 import { SessionTimer } from "@/components/ui/session-timer"
 import { Badge } from "@/components/ui/badge"
-import { MicIcon, PaletteIcon, CastIcon } from "lucide-react"
+import { MicIcon, PaletteIcon, CastIcon, SunIcon, MoonIcon, MonitorIcon } from "lucide-react"
 import { AlertSendButton } from "@/components/broadcast/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { ThemeDesigner } from "@/components/broadcast/theme-designer"
 import { BroadcastSettings } from "@/components/broadcast/broadcast-settings"
 import { useAudioStore, useTranscriptStore, useBroadcastStore } from "@/stores"
+import { useTheme } from "@/components/theme-provider"
 
 export function TransportBar() {
   const audioLevel = useAudioStore((s) => s.level)
   const isTranscribing = useTranscriptStore((s) => s.isTranscribing)
   const [broadcastOpen, setBroadcastOpen] = useState(false)
+  const { theme, setTheme } = useTheme()
+
+  const cycleTheme = () => {
+    const next = theme === "dark" ? "light" : theme === "light" ? "system" : "dark"
+    setTheme(next)
+  }
+
+  const ThemeIcon = theme === "dark" ? MoonIcon : theme === "light" ? SunIcon : MonitorIcon
+  const themeLabel = theme === "dark" ? "Dark" : theme === "light" ? "Light" : "System"
 
   return (
     <div
@@ -60,6 +70,14 @@ export function TransportBar() {
           <PaletteIcon className="size-3.5" />
         </Button>
         <ThemeDesigner />
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title={`Theme: ${themeLabel}`}
+          onClick={cycleTheme}
+        >
+          <ThemeIcon className="size-3.5" />
+        </Button>
         <SettingsDialog />
       </div>
     </div>
